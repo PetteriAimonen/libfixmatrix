@@ -6,9 +6,9 @@
  * Operations between 2 matrices *
  *********************************/
 
-// Calculates the dotproduct of row and column vectors of size n.
+// Calculates the dotproduct of two vectors of size n.
 // If overflow happens, sets flag in errors
-static fix16_t dotproduct_rowcol(const fix16_t *row, const fix16_t *column, int n, uint8_t *errors)
+fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t b_stride, uint8_t n, uint8_t *errors)
 {
     fix16_t sum = 0;
     
@@ -19,9 +19,7 @@ static fix16_t dotproduct_rowcol(const fix16_t *row, const fix16_t *column, int 
     while (n--)
     {
         // Compute result
-        fix16_t a = *row;
-        fix16_t b = *column;
-        fix16_t product = fix16_mul(a, b);
+        fix16_t product = fix16_mul(*a, *b);
         
         if (product != 0)
         {
@@ -29,7 +27,7 @@ static fix16_t dotproduct_rowcol(const fix16_t *row, const fix16_t *column, int 
             
             // Detect overflows in multiplication
             // highest bit of a^b should equal the sign bit of product
-            overflows |= a^b^product;
+            overflows |= (*a)^(*b)^product;
             
             // Detect overflows in addition
             // overflow can only happen if sign of product == sign of sum,
@@ -40,8 +38,8 @@ static fix16_t dotproduct_rowcol(const fix16_t *row, const fix16_t *column, int 
         }
         
         // Go to next item
-        row += 1;
-        column += FIXMATRIX_MAX_SIZE;
+        a += a_stride;
+        b += b_stride;
     }
     
     if (overflows & SIGNBIT)
@@ -70,7 +68,37 @@ void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
     {
         for (column = 0; column < dest->columns; column++)
         {
-            dest->data[row][column] = dotproduct_rowcol(&a->data[row][0], &b->data[0][column], a->columns, &dest->errors);
+            dest->data[row][column] = dotproduct(
+                &a->data[row][0], 1,
+                &b->data[0][column], FIXMATRIX_MAX_SIZE,
+                a->columns, &dest->errors);
+        }
+    }
+}
+
+// Multiply transpose of at with b
+void mf16_mul_t(mf16 *dest, const mf16 *at, const mf16 *b)
+{
+    int row, column;
+    dest->errors = at->errors | b->errors;
+    
+    if (at->rows != b->rows)
+        dest->errors |= FIXMATRIX_DIMERR;
+    
+    if (dest == at || dest == b)
+        dest->errors |= FIXMATRIX_USEERR;
+    
+    dest->rows = at->columns;
+    dest->columns = b->columns;
+    
+    for (row = 0; row < dest->rows; row++)
+    {
+        for (column = 0; column < dest->columns; column++)
+        {
+            dest->data[row][column] = dotproduct(
+                &at->data[0][row], FIXMATRIX_MAX_SIZE,
+                &b->data[0][column], FIXMATRIX_MAX_SIZE,
+                at->rows, &dest->errors);
         }
     }
 }
@@ -196,50 +224,28 @@ void mf16_mul_s(mf16 *matrix, fix16_t scalar)
  * Solving linear equations using QR decomposition *
  ***************************************************/
 
-static fix16_t dotproduct_row(const fix16_t *v, const fix16_t *u, int n, uint8_t *errors)
-{
-    int i;
-    fix16_t sum = 0; // Stores the dot product
-    fix16_t overflows = 0;
-    
-    for (i = 0; i < n; i++)
-    {
-        fix16_t product = fix16_mul(v[i], u[i]);
-        fix16_t newsum = sum + product;
-        
-        overflows |= v[i]^u[i]^product;
-        overflows |= ~(sum ^ product) & (sum ^ newsum);
-        
-        sum = newsum;
-    }
-    
-    if (overflows & SIGNBIT)
-    {
-        *errors |= FIXMATRIX_OVERFLOW;
-    }
-    
-    return sum;
-}
-
-// Takes two row vectors, v and u, of size n.
+// Takes two columns vectors, v and u, of size n.
 // Performs v = v - dot(u, v) * u,
 // where dot(u,v) has already been computed
 // u is assumed to be an unit vector.
 static void subtract_projection(fix16_t *v, const fix16_t *u, fix16_t dot, int n, uint8_t *errors)
 {
-    int i;
     fix16_t overflows = 0;
     
-    for (i = 0; i < n; i++)
+    while (n--)
     {
         // For unit vector u, u[i] <= 1
         // Therefore this multiplication cannot overflow
-        fix16_t product = fix16_mul(dot, u[i]);
+        fix16_t product = fix16_mul(dot, *u);
         
-        fix16_t diff = v[i] - product;
-        overflows |= (v[i] ^ product) & (v[i] ^ diff);
+        // TODO: Can this overflow ever happen?
+        fix16_t diff = *v - product;
+        overflows |= (*v ^ product) & (*v ^ diff);
         
-        v[i] = diff;
+        *v = diff;
+        
+        v += FIXMATRIX_MAX_SIZE;
+        u += FIXMATRIX_MAX_SIZE;
     }
     
     if (overflows & SIGNBIT)
@@ -248,29 +254,27 @@ static void subtract_projection(fix16_t *v, const fix16_t *u, fix16_t dot, int n
     }
 }
 
-void mf16_qr_decomposition(mf16 *qt, mf16 *r, const mf16 *matrix, int reorthogonalize)
+void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogonalize)
 {
     int i, j, reorth;
     fix16_t dot, norm;
     
-    int columns = matrix->columns;
+    uint8_t stride = FIXMATRIX_MAX_SIZE;
+    uint8_t n = matrix->rows;
     
     // This uses the modified Gram-Schmidt algorithm.
     // subtract_projection takes advantage of the fact that
-    // previous rows have already been normalized.
+    // previous columns have already been normalized.
     
-    // We start with q = transpose(matrix), just because it is
-    // nicer to work with row vectors in C. Also for mf16_solve
-    // it is more useful to get q' anyway.
-    if (qt != matrix)
+    // We start with q = matrix
+    if (q != matrix)
     {
-        *qt = *matrix;
+        *q = *matrix;
     }
-    mf16_transpose(qt);
     
     // R is initialized to have square size of cols(A) and zeroed.
-    r->columns = columns;
-    r->rows = columns;
+    r->columns = matrix->columns;
+    r->rows = matrix->columns;
     r->errors = 0;
     for (j = 0; j < r->rows; j++)
     {
@@ -281,24 +285,25 @@ void mf16_qr_decomposition(mf16 *qt, mf16 *r, const mf16 *matrix, int reorthogon
     }
     
     // Now do the actual Gram-Schmidt for the rows.
-    for (j = 0; j < qt->rows; j++)
+    for (j = 0; j < q->columns; j++)
     {
         for (reorth = 0; reorth <= reorthogonalize; reorth++)
         {
             for (i = 0; i < j; i++)
             {
-                fix16_t *v = &qt->data[j][0];
-                fix16_t *u = &qt->data[i][0];
+                fix16_t *v = &q->data[0][j];
+                fix16_t *u = &q->data[0][i];
                 
-                dot = dotproduct_row(v, u, qt->columns, &qt->errors);
-                subtract_projection(v, u, dot, qt->columns, &qt->errors);
+                dot = dotproduct(v, stride, u, stride, n, &q->errors);
+                subtract_projection(v, u, dot, n, &q->errors);
                 
                 r->data[i][j] += dot;
             }
         }
         
         // Normalize the row in q
-        dot = dotproduct_row(&qt->data[j][0], &qt->data[j][0], qt->columns, &qt->errors);
+        dot = dotproduct(&q->data[0][j], stride, &q->data[0][j], stride,
+                         n, &q->errors);
         norm = fix16_sqrt(dot);
         r->data[j][j] = norm;
         
@@ -306,18 +311,73 @@ void mf16_qr_decomposition(mf16 *qt, mf16 *r, const mf16 *matrix, int reorthogon
         {
             // Nearly zero norm, which means that the row
             // was linearly dependent.
-            qt->errors |= FIXMATRIX_USEERR;
+            q->errors |= FIXMATRIX_USEERR;
             continue;
         }
         
-        for (i = 0; i < qt->columns; i++)
+        for (i = 0; i < n; i++)
         {
             // norm >= v[i] for all i, therefore this division
             // doesn't overflow unless norm approaches 0.
-            qt->data[j][i] = fix16_div(qt->data[j][i], norm);
+            q->data[i][j] = fix16_div(q->data[i][j], norm);
         }
     }
     
-    r->errors = qt->errors;
+    r->errors = q->errors;
 }
+
+void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
+{
+    int row, column, variable;
+    fix16_t overflows = 0;
+    
+    // Ax=b <=> QRx=b <=> Q'QRx=Q'b <=> Rx=Q'b
+    // Q'b is calculated directly and x is then solved row-by-row.
+    mf16_mul_t(dest, q, matrix);
+    
+    if (r->columns != r->rows || r->columns != q->columns)
+    {
+        dest->errors |= FIXMATRIX_USEERR;
+    }
+    
+    for (column = 0; column < dest->columns; column++)
+    {
+        for (row = dest->rows - 1; row >= 0; row--)
+        {
+            fix16_t value = dest->data[row][column];
+            
+            // Subtract any already solved variables
+            for (variable = row + 1; variable < r->columns; variable++)
+            {
+                fix16_t multiplier = r->data[row][variable];
+                fix16_t known_value = dest->data[variable][column];
+                fix16_t product = fix16_mul(multiplier, known_value);
+                
+                if (product != 0)
+                {
+                    fix16_t newvalue = value - product;
+                
+                    overflows |= multiplier^known_value^product;
+                    overflows |= (value ^ product) & (value ^ newvalue);
+                    
+                    value = newvalue;
+                }
+            }
+            
+            // Now value = R_ij x_i <=> x_i = value / R_ij
+            fix16_t divider = r->data[row][row];
+            fix16_t result = fix16_div(value, divider);
+            dest->data[row][column] = result;
+            
+            // Sign of result should be sign of divider ^ sign of value
+            overflows |= divider ^ value ^ result;
+        }
+    }
+    
+    if (overflows & SIGNBIT)
+    {
+        dest->errors |= FIXMATRIX_OVERFLOW;
+    }
+}
+
 

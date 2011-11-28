@@ -96,22 +96,45 @@ int main()
     }
     
     {
+        mf16 a = {5, 1, 0,
+            {{fix16_from_int(101)},
+             {fix16_from_int(102)},
+             {fix16_from_int(103)},
+             {fix16_from_int(104)},
+             {fix16_from_int(105)}}};
+        mf16 b = {5, 1, 0,
+            {{fix16_from_int(51)},
+             {fix16_from_int(52)},
+             {fix16_from_int(53)},
+             {fix16_from_int(54)},
+             {fix16_from_int(55)}}};
+        
+        mf16 atb;
+        
+        COMMENT("Test transposed multiplication of vectors");
+        mf16_mul_t(&atb, &a, &b);
+        
+        TEST(atb.rows == 1);
+        TEST(atb.columns == 1);
+        TEST(atb.errors == 0);
+        TEST(atb.data[0][0] == fix16_from_int(27305));
+    }
+    
+    {
         mf16 a = {3, 3, 0,
             {{fix16_from_int(1), fix16_from_int(2), fix16_from_int(3)},
              {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)},
              {fix16_from_int(7), fix16_from_int(8), fix16_from_int(10)}}};
-        mf16 qt, r, q, qtq, qr;
+        mf16 q, r, qtq, qr;
         
         COMMENT("Test 3x3 QR-decomposition");
-        mf16_qr_decomposition(&qt, &r, &a, 3);
-        printf("q' =\n");
-        print_matrix(&qt);
+        mf16_qr_decomposition(&q, &r, &a, 3);
+        printf("q =\n");
+        print_matrix(&q);
         printf("r =\n");
         print_matrix(&r);
         
-        q = qt;
-        mf16_transpose(&q);
-        mf16_mul(&qtq, &qt, &q);
+        mf16_mul_t(&qtq, &q, &q);
         printf("q'q =\n");
         print_matrix(&qtq);
         
@@ -134,20 +157,18 @@ int main()
              {fix16_from_int(7), fix16_from_int(8), fix16_from_int(9)},
              {fix16_from_int(10), fix16_from_int(11), fix16_from_int(13)},
             }};
-        mf16 qt, r, q, qtq, qr;
+        mf16 q, r, qtq, qr;
         
-        qt = a;
+        q = a;
         
-        COMMENT("Test 4x3 QR-decomposition with aliasing qt = matrix");
-        mf16_qr_decomposition(&qt, &r, &qt, 3);
-        printf("q' =\n");
-        print_matrix(&qt);
+        COMMENT("Test 4x3 QR-decomposition with aliasing q = matrix");
+        mf16_qr_decomposition(&q, &r, &q, 3);
+        printf("q =\n");
+        print_matrix(&q);
         printf("r =\n");
         print_matrix(&r);
         
-        q = qt;
-        mf16_transpose(&q);
-        mf16_mul(&qtq, &qt, &q);
+        mf16_mul_t(&qtq, &q, &q);
         printf("q'q =\n");
         print_matrix(&qtq);
         
@@ -164,16 +185,99 @@ int main()
         
         COMMENT("Test 4x3 QR-decomposition with aliasing r = matrix");
         r = a;
-        mf16_qr_decomposition(&qt, &r, &r, 3);
-        q = qt;
-        mf16_transpose(&q);
-        mf16_mul(&qtq, &qt, &q);
+        mf16_qr_decomposition(&q, &r, &r, 3);
+        mf16_mul_t(&qtq, &q, &q);
         mf16_mul(&qr, &q, &r);
-        
         TEST(max_delta(&qtq, &identity) < 5);
         TEST(max_delta(&qr, &a) < 10);
     }
+    
+    {
+        mf16 a = {8, 1, 0,
+            {{fix16_from_int(1)},
+             {fix16_from_int(2)},
+             {fix16_from_int(3)},
+             {fix16_from_int(4)},
+             {fix16_from_int(5)},
+             {fix16_from_int(6)},
+             {fix16_from_int(7)},
+             {fix16_from_int(8)},
+            }};
+        mf16 q, r, qtq, qr;
         
+        COMMENT("Test 8x1 QR-decomposition");
+        mf16_qr_decomposition(&q, &r, &a, 3);
+        printf("q =\n");
+        print_matrix(&q);
+        printf("r =\n");
+        print_matrix(&r);
+        
+        mf16_mul_t(&qtq, &q, &q);
+        printf("q'q =\n");
+        print_matrix(&qtq);
+        
+        mf16_mul(&qr, &q, &r);
+        printf("qr =\n");
+        print_matrix(&qr);
+        
+        const mf16 identity = {1, 1, 0,
+            {{fix16_from_int(1)}}
+        };
+        TEST(max_delta(&qtq, &identity) < 5);
+        TEST(max_delta(&qr, &a) < 10);
+    }
+    
+    {
+        mf16 a = {3, 3, 0,
+            {{fix16_from_int(1), fix16_from_int(2), fix16_from_int(3)},
+             {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)},
+             {fix16_from_int(7), fix16_from_int(8), fix16_from_int(10)}}};
+        mf16 b = {3, 1, 0,
+            {{fix16_from_int(-1)}, {fix16_from_int(-2)}, {fix16_from_int(-3)}}};
+        mf16 q, r, x, ax;
+        
+        COMMENT("Test 3x3 equation solving");
+        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_solve(&x, &q, &r, &b);
+        printf("x = \n");
+        print_matrix(&x);
+        
+        mf16_mul(&ax, &a, &x);
+        printf("Ax = \n");
+        print_matrix(&ax);
+        
+        TEST(max_delta(&ax, &b) < 10);
+    }
+    
+    {
+        mf16 a = {4, 3, 0,
+            {{fix16_from_int(31), fix16_from_int(41), fix16_from_int(59)},
+             {fix16_from_int(26), fix16_from_int(53), fix16_from_int(58)},
+             {fix16_from_int(97), fix16_from_int(93), fix16_from_int(23)},
+             {fix16_from_int(84), fix16_from_int(62), fix16_from_int(64)},
+            }};
+        mf16 b = {4, 1, 0,
+            {{fix16_from_int(100)},
+             {fix16_from_int(100)},
+             {fix16_from_int(100)},
+             {fix16_from_int(100)}
+            }};
+        mf16 q, r, x;
+        
+        COMMENT("Test 4x3 least squares solving");
+        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_solve(&x, &q, &r, &b);
+        printf("x = \n");
+        print_matrix(&x);
+        
+        // Reference result computed using Octave A\b
+        mf16 ref = {3, 1, 0,
+            {{fix16_from_float(-0.31426f)},
+             {fix16_from_float( 1.16055f)},
+             {fix16_from_float( 0.90470f)}}};
+        TEST(max_delta(&x, &ref) < 5);
+    }
+    
     if (status != 0)
         fprintf(stdout, "\n\nSome tests FAILED!\n");
     

@@ -57,10 +57,18 @@ typedef struct {
 #define FIXMATRIX_DIMERR   0x02
 #define FIXMATRIX_USEERR   0x04
 
+// Calculates the dotproduct of two vectors of size n.
+// If overflow happens, sets flag in errors
+fix16_t dotproduct(const fix16_t *a, uint8_t a_stride,
+                   const fix16_t *b, uint8_t b_stride,
+                   uint8_t n, uint8_t *errors);
+
 // Operations between two matrices
-// Note: when dest is separate parameter from a, they must not
-// point to the same matrix. If they do, FIXMATRIX_USEERR is set.
+// Note: in multiplication, dest can not point to the
+// same matrix as a or b. If it does, FIXMATRIX_USEERR
+// is set.
 void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b);
+void mf16_mul_t(mf16 *dest, const mf16 *at, const mf16 *b);
 void mf16_add(mf16 *a, const mf16 *b);
 void mf16_sub(mf16 *a, const mf16 *b);
 
@@ -85,14 +93,16 @@ void mf16_mul_s(mf16 *matrix, fix16_t scalar);
 // and typically gives rounding error of 0.1-0.5%. Values >3
 // rarely improve precision.
 //
-// In mf16_qr_decomposition, qt and matrix, or alternatively, r and matrix
+// In mf16_qr_decomposition, q and matrix, or alternatively, r and matrix
 // may alias i.e. point to the same memory location.
-//
-// The output qt is the transpose of the actual q matrix.
-void mf16_qr_decomposition(mf16 *qt, mf16 *r, const mf16 *matrix, int reorthogonalize);
+void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogonalize);
 
 // Solving a system of linear equations Ax = b, or equivalently,
 // right division A\b, using QR-decomposition.
-void mf16_solve(mf16 *dest, const mf16 *qt, const mf16 *r, const mf16 *matrix);
+// matrix is the b and x is stored to dest.
+// The arguments cannot alias.
+// matrix may have multiple columns, which are then solved
+// independently.
+void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix);
 
 #endif
