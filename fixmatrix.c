@@ -1,6 +1,33 @@
 #include "fixmatrix.h"
 
-#define SIGNBIT 0x80000000
+// Helper macros for detecting overflows in basic operations.
+// To reduce the number of conditional branches, they use bitwise
+// logic instead of if's. The overflow status of all computations
+// is accumulated in a variable and checked at the end of a loop.
+
+#define SIGN(x) ((uint32_t)(x) >> 31)
+#define NOT(x) ((x) ^ 1)
+
+// Detect overflows in multiplication
+// Sign of product should be sign of a ^ sign of b
+// Note: Works only for product != 0
+#define MUL_OVERFLOW(a, b, product) (SIGN(a)^SIGN(b)^SIGN(product))
+
+// Detect overflows in division
+// Sign of result should be sign of divider ^ sign of value
+// Note: works only for result != 0
+#define DIV_OVERFLOW(a, b, result) (SIGN(a)^SIGN(b)^SIGN(result))
+
+// Detect overflows in addition
+// overflow can only happen if sign of a == sign of b,
+// and then it causes sign of sum != sign of a            
+#define ADD_OVERFLOW(a, b, sum) (NOT(SIGN(a) ^ SIGN(b))                           & (SIGN(sum) ^ SIGN(a)))
+
+// Detect overflows in subtraction
+// Overflow can occur if sign of a != sign of b
+// and is detected by sign of diff != sign of a
+#define SUB_OVERFLOW(a, b, diff) ((SIGN(a) ^ SIGN(b)) & (SIGN(a) ^ SIGN(diff)))
+
 
 /*********************************
  * Operations between 2 matrices *
@@ -11,10 +38,7 @@
 fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t b_stride, uint8_t n, uint8_t *errors)
 {
     fix16_t sum = 0;
-    
-    // To reduce conditional branches, the overflow status is collected
-    // into this variable using bitwise operations.
-    fix16_t overflows = 0;
+    uint8_t overflows = 0;
     
     while (n--)
     {
@@ -24,16 +48,8 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t
         if (product != 0)
         {
             fix16_t newsum = sum + product;
-            
-            // Detect overflows in multiplication
-            // highest bit of a^b should equal the sign bit of product
-            overflows |= (*a)^(*b)^product;
-            
-            // Detect overflows in addition
-            // overflow can only happen if sign of product == sign of sum,
-            // and then it causes sign of newsum != sign of sum
-            overflows |= ~(sum ^ product) & (sum ^ newsum);
-            
+            overflows |= MUL_OVERFLOW(*a, *b, product);
+            overflows |= ADD_OVERFLOW(sum, product, newsum);
             sum = newsum;
         }
         
@@ -42,7 +58,7 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t
         b += b_stride;
     }
     
-    if (overflows & SIGNBIT)
+    if (overflows)
     {
         *errors |= FIXMATRIX_OVERFLOW;
     }
@@ -103,63 +119,61 @@ void mf16_mul_t(mf16 *dest, const mf16 *at, const mf16 *b)
     }
 }
 
-void mf16_add(mf16 *a, const mf16 *b)
+void mf16_add(mf16 *dest, const mf16 *a, const mf16 *b)
 {
     int row, column;
-    fix16_t overflows = 0;
-    a->errors |= b->errors;
+    uint8_t overflows = 0;
+    dest->errors = a->errors | b->errors;
+    dest->rows = a->rows;
+    dest->columns = a->columns;
     
     if (a->columns != b->columns || a->rows != b->rows)
-        a->errors |= FIXMATRIX_DIMERR;
+        dest->errors |= FIXMATRIX_DIMERR;
     
-    for (row = 0; row < a->rows; row++)
+    for (row = 0; row < dest->rows; row++)
     {
-        for (column = 0; column < a->columns; column++)
+        for (column = 0; column < dest->columns; column++)
         {
             fix16_t _a = a->data[row][column];
             fix16_t _b = b->data[row][column];
             fix16_t sum = _a + _b;
-            
-            overflows |= ~(_a ^ _b) & (_a ^ sum);
-            
-            a->data[row][column] = sum;
+            overflows |= ADD_OVERFLOW(_a, _b, sum);
+            dest->data[row][column] = sum;
         }
     }
     
-    if (overflows & SIGNBIT)
+    if (overflows)
     {
-        a->errors |= FIXMATRIX_OVERFLOW;
+        dest->errors |= FIXMATRIX_OVERFLOW;
     }
 }
 
-void mf16_sub(mf16 *a, const mf16 *b)
+void mf16_sub(mf16 *dest, const mf16 *a, const mf16 *b)
 {
     int row, column;
-    fix16_t overflows = 0;
-    a->errors |= b->errors;
+    uint8_t overflows = 0;
+    dest->errors = a->errors | b->errors;
+    dest->rows = a->rows;
+    dest->columns = a->columns;
     
     if (a->columns != b->columns || a->rows != b->rows)
-        a->errors |= FIXMATRIX_DIMERR;
+        dest->errors |= FIXMATRIX_DIMERR;
     
-    for (row = 0; row < a->rows; row++)
+    for (row = 0; row < dest->rows; row++)
     {
-        for (column = 0; column < a->columns; column++)
+        for (column = 0; column < dest->columns; column++)
         {
             fix16_t _a = a->data[row][column];
             fix16_t _b = b->data[row][column];
             fix16_t diff = _a - _b;
-            
-            // Overflow can occur if sign of a != sign of b
-            // and is detected by sign of diff != sign of a
-            overflows |= (_a ^ _b) & (_a ^ diff);
-            
-            a->data[row][column] = diff;
+            overflows |= SUB_OVERFLOW(_a, _b, diff);
+            dest->data[row][column] = diff;
         }
     }
     
-    if (overflows & SIGNBIT)
+    if (overflows)
     {
-        a->errors |= FIXMATRIX_OVERFLOW;
+        dest->errors |= FIXMATRIX_OVERFLOW;
     }
 }
 
@@ -196,7 +210,7 @@ void mf16_transpose(mf16 *matrix)
 void mf16_mul_s(mf16 *matrix, fix16_t scalar)
 {
     int row, column;
-    fix16_t overflows = 0;
+    uint8_t overflows = 0;
     
     for (row = 0; row < matrix->rows; row++)
     {
@@ -205,15 +219,16 @@ void mf16_mul_s(mf16 *matrix, fix16_t scalar)
             fix16_t value = matrix->data[row][column];
             fix16_t product = fix16_mul(value, scalar);
             
-            // Detect overflows in multiplication
-            // highest bit of value^scalar should equal the sign bit of product
-            overflows |= value^scalar^product;
+            if (product != 0)
+            {
+                overflows |= MUL_OVERFLOW(value, scalar, product);
+            }
             
             matrix->data[row][column] = product;
         }
     }
     
-    if (overflows & SIGNBIT)
+    if (overflows)
     {
         matrix->errors |= FIXMATRIX_OVERFLOW;
     }
@@ -230,7 +245,7 @@ void mf16_mul_s(mf16 *matrix, fix16_t scalar)
 // u is assumed to be an unit vector.
 static void subtract_projection(fix16_t *v, const fix16_t *u, fix16_t dot, int n, uint8_t *errors)
 {
-    fix16_t overflows = 0;
+    uint8_t overflows = 0;
     
     while (n--)
     {
@@ -240,7 +255,7 @@ static void subtract_projection(fix16_t *v, const fix16_t *u, fix16_t dot, int n
         
         // TODO: Can this overflow ever happen?
         fix16_t diff = *v - product;
-        overflows |= (*v ^ product) & (*v ^ diff);
+        overflows |= SUB_OVERFLOW(*v, product, diff);
         
         *v = diff;
         
@@ -248,7 +263,7 @@ static void subtract_projection(fix16_t *v, const fix16_t *u, fix16_t dot, int n
         u += FIXMATRIX_MAX_SIZE;
     }
     
-    if (overflows & SIGNBIT)
+    if (overflows)
     {
         *errors |= FIXMATRIX_OVERFLOW;
     }
@@ -311,7 +326,7 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
         {
             // Nearly zero norm, which means that the row
             // was linearly dependent.
-            q->errors |= FIXMATRIX_USEERR;
+            q->errors |= FIXMATRIX_SINGULAR;
             continue;
         }
         
@@ -329,7 +344,7 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
 void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
 {
     int row, column, variable;
-    fix16_t overflows = 0;
+    uint8_t overflows = 0;
     
     // Ax=b <=> QRx=b <=> Q'QRx=Q'b <=> Rx=Q'b
     // Q'b is calculated directly and x is then solved row-by-row.
@@ -357,8 +372,8 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
                 {
                     fix16_t newvalue = value - product;
                 
-                    overflows |= multiplier^known_value^product;
-                    overflows |= (value ^ product) & (value ^ newvalue);
+                    overflows |= MUL_OVERFLOW(multiplier, known_value, product);
+                    overflows |= SUB_OVERFLOW(value, product, newvalue);
                     
                     value = newvalue;
                 }
@@ -366,15 +381,23 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
             
             // Now value = R_ij x_i <=> x_i = value / R_ij
             fix16_t divider = r->data[row][row];
+            if (divider == 0)
+            {
+                dest->errors |= FIXMATRIX_SINGULAR;
+                continue;
+            }
+            
             fix16_t result = fix16_div(value, divider);
             dest->data[row][column] = result;
             
-            // Sign of result should be sign of divider ^ sign of value
-            overflows |= divider ^ value ^ result;
+            if (result != 0)
+            {
+                overflows |= DIV_OVERFLOW(value, divider, result);
+            }
         }
     }
     
-    if (overflows & SIGNBIT)
+    if (overflows)
     {
         dest->errors |= FIXMATRIX_OVERFLOW;
     }

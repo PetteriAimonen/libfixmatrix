@@ -24,7 +24,6 @@
 #ifndef __fixmatrix_h_
 #define __fixmatrix_h_
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <fix16.h>
 
@@ -56,6 +55,7 @@ typedef struct {
 #define FIXMATRIX_OVERFLOW 0x01
 #define FIXMATRIX_DIMERR   0x02
 #define FIXMATRIX_USEERR   0x04
+#define FIXMATRIX_SINGULAR 0x08
 
 // Calculates the dotproduct of two vectors of size n.
 // If overflow happens, sets flag in errors
@@ -69,8 +69,10 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride,
 // is set.
 void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b);
 void mf16_mul_t(mf16 *dest, const mf16 *at, const mf16 *b);
-void mf16_add(mf16 *a, const mf16 *b);
-void mf16_sub(mf16 *a, const mf16 *b);
+
+// In addition and subtraction, a = dest and b = dest are allowed.
+void mf16_add(mf16 *dest, const mf16 *a, const mf16 *b);
+void mf16_sub(mf16 *dest, const mf16 *a, const mf16 *b);
 
 // Operations on a single matrix
 void mf16_transpose(mf16 *matrix);
@@ -81,7 +83,7 @@ void mf16_mul_s(mf16 *matrix, fix16_t scalar);
 // QR-decomposition of a matrix
 //
 // This function does not support rank-deficient matrices.
-// If rank(A) < cols(A), FIXMATRIX_USEERR is set.
+// If rank(A) < cols(A), FIXMATRIX_SINGULAR is set.
 //
 // Overdetermined systems of rows(A) > cols(A) are supported.
 // For them, an 'economy' factorization is returned, with q
@@ -103,6 +105,9 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
 // The arguments cannot alias.
 // matrix may have multiple columns, which are then solved
 // independently.
+// If you really really want and think that it is a
+// good idea to invert matrices, you can do it by
+// passing identity matrix as 'matrix'.
 void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix);
 
 #endif

@@ -121,6 +121,79 @@ int main()
     }
     
     {
+        mf16 a = {4, 3, 0,
+            {{fix16_from_int(101), fix16_from_int(102), fix16_from_int(103)},
+             {fix16_from_int(104), fix16_from_int(105), fix16_from_int(106)},
+             {fix16_from_int(107), fix16_from_int(108), fix16_from_int(109)},
+             {fix16_from_int(110), fix16_from_int(111), fix16_from_int(112)}
+            }};
+        mf16 b = {4, 3, 0,
+            {{fix16_from_int(-1), fix16_from_int(-2), fix16_from_int(-3)},
+             {fix16_from_int(-4), fix16_from_int(-5), fix16_from_int(-6)},
+             {fix16_from_int(-7), fix16_from_int(-8), fix16_from_int(-9)},
+             {fix16_from_int(-10), fix16_from_int(-11), fix16_from_int(-12)}
+            }};
+        mf16 ref = {4, 3, 0,
+            {{fix16_from_int(100), fix16_from_int(100), fix16_from_int(100)},
+             {fix16_from_int(100), fix16_from_int(100), fix16_from_int(100)},
+             {fix16_from_int(100), fix16_from_int(100), fix16_from_int(100)},
+             {fix16_from_int(100), fix16_from_int(100), fix16_from_int(100)}
+            }};
+        mf16 r;
+        
+        COMMENT("Test mf16_add with 4x3 matrices");
+        mf16_add(&r, &a, &b);
+        TEST(max_delta(&r, &ref) == 0);
+        
+        COMMENT("Test mf16_add with 4x3 matrices and aliasing");
+        r = a;
+        mf16_add(&r, &r, &b);
+        TEST(max_delta(&r, &ref) == 0);
+        
+        COMMENT("Test mf16_sub with 4x3 matrices and aliasing");
+        mf16_sub(&r, &r, &b);
+        TEST(max_delta(&r, &a) == 0);
+    }
+    
+    {
+        mf16 a = {5, 1, 0,
+            {{fix16_from_int(1)},
+             {fix16_from_int(2)},
+             {fix16_from_int(20000)},
+             {fix16_from_int(-20000)},
+             {fix16_from_int(4)}}};
+        mf16 b = {5, 1, 0,
+            {{fix16_from_int(1)},
+             {fix16_from_int(2)},
+             {fix16_from_int(20000)},
+             {fix16_from_int(3)},
+             {fix16_from_int(4)}}};
+        mf16 c = {5, 1, 0,
+            {{fix16_from_int(1)},
+             {fix16_from_int(2)},
+             {fix16_from_int(3)},
+             {fix16_from_int(20000)},
+             {fix16_from_int(4)}}};
+        mf16 r;
+        
+        COMMENT("Test overflow detection in addition");
+        mf16_add(&r, &a, &b);
+        TEST(r.errors == FIXMATRIX_OVERFLOW);
+        mf16_add(&r, &a, &c);
+        TEST(r.errors == 0);
+        mf16_add(&r, &b, &c);
+        TEST(r.errors == 0);
+        
+        COMMENT("Test overflow detection in subtraction");
+        mf16_sub(&r, &a, &c);
+        TEST(r.errors == FIXMATRIX_OVERFLOW);
+        mf16_sub(&r, &a, &b);
+        TEST(r.errors == 0);
+        mf16_sub(&r, &b, &c);
+        TEST(r.errors == 0);
+    }
+    
+    {
         mf16 a = {3, 3, 0,
             {{fix16_from_int(1), fix16_from_int(2), fix16_from_int(3)},
              {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)},
@@ -278,6 +351,65 @@ int main()
         TEST(max_delta(&x, &ref) < 5);
     }
     
+    {
+        mf16 a = {3, 3, 0,
+            {{fix16_from_int(15), fix16_from_int(-12), fix16_from_int(99)},
+             {fix16_from_int(42), fix16_from_int(57), fix16_from_int(6)},
+             {fix16_from_int(72), fix16_from_int(-8), fix16_from_int(10)}}};
+        mf16 b = {3, 2, 0,
+            {{fix16_from_int(10), fix16_from_int(-12)},
+             {fix16_from_int(20), fix16_from_int(15)},
+             {fix16_from_int(30), fix16_from_int(99)}}};
+        mf16 q, r, x, ax;
+        
+        COMMENT("Test 3x3 equation solving with multiple columns");
+        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_solve(&x, &q, &r, &b);
+        printf("x = \n");
+        print_matrix(&x);
+        
+        mf16_mul(&ax, &a, &x);
+        printf("Ax = \n");
+        print_matrix(&ax);
+        
+        // Note: large delta due to large values in matrix.
+        // This is one of the shortcomings of fixed point format.
+        TEST(max_delta(&ax, &b) < 500);
+    }
+    
+    {
+        mf16 a = {4, 4, 0,
+            {{fix16_from_int(7), fix16_from_int(-11), fix16_from_int(80), fix16_from_int(15)},
+             {fix16_from_int(11), fix16_from_int(-59), fix16_from_int(57), fix16_from_int(72)},
+             {fix16_from_int(79), fix16_from_int(57), fix16_from_int(-8), fix16_from_int(24)},
+             {fix16_from_int(-23), fix16_from_int(32), fix16_from_int(0), fix16_from_int(56)},
+            }};
+        fix16_t one = fix16_from_int(1);
+        mf16 identity = {4, 4, 0,
+            {{one,0,0,0}, {0,one,0,0}, {0,0,one,0}, {0,0,0,one}}};
+        mf16 q, r, result, inv_a;
+        
+        COMMENT("Test 4x4 matrix inversion");
+        mf16_qr_decomposition(&q, &r, &a, 0);
+        
+        printf("q =\n");
+        print_matrix(&q);
+        printf("r =\n");
+        print_matrix(&r);
+        
+        mf16_solve(&inv_a, &q, &r, &identity);
+        
+        mf16_mul(&result, &a, &inv_a);
+        printf("a*inv(a) =\n");
+        print_matrix(&result);
+        TEST(max_delta(&result, &identity) < 400);
+        
+        mf16_mul(&result, &inv_a, &a);
+        printf("inv(a)*a =\n");
+        print_matrix(&result);
+        TEST(max_delta(&result, &identity) < 400);
+    }
+        
     if (status != 0)
         fprintf(stdout, "\n\nSome tests FAILED!\n");
     
