@@ -123,12 +123,13 @@ void mf16_add(mf16 *dest, const mf16 *a, const mf16 *b)
 {
     int row, column;
     uint8_t overflows = 0;
-    dest->errors = a->errors | b->errors;
-    dest->rows = a->rows;
-    dest->columns = a->columns;
     
+    dest->errors = a->errors | b->errors;
     if (a->columns != b->columns || a->rows != b->rows)
         dest->errors |= FIXMATRIX_DIMERR;
+    
+    dest->rows = a->rows;
+    dest->columns = a->columns;
     
     for (row = 0; row < dest->rows; row++)
     {
@@ -152,12 +153,13 @@ void mf16_sub(mf16 *dest, const mf16 *a, const mf16 *b)
 {
     int row, column;
     uint8_t overflows = 0;
-    dest->errors = a->errors | b->errors;
-    dest->rows = a->rows;
-    dest->columns = a->columns;
     
+    dest->errors = a->errors | b->errors;
     if (a->columns != b->columns || a->rows != b->rows)
         dest->errors |= FIXMATRIX_DIMERR;
+    
+    dest->rows = a->rows;
+    dest->columns = a->columns;
     
     for (row = 0; row < dest->rows; row++)
     {
@@ -181,40 +183,57 @@ void mf16_sub(mf16 *dest, const mf16 *a, const mf16 *b)
  * Operations on a single matrix *
  *********************************/
 
-void mf16_transpose(mf16 *matrix)
+void mf16_transpose(mf16 *dest, const mf16 *matrix)
 {
     int row, column;
     
+    // This code is a bit tricky in order to work
+    // in the situation when dest = matrix.
+    // Before writing a value in dest, we must copy
+    // the corresponding value from matrix to a temporary
+    // variable.
+    
+    // We actually transpose a n by n square matrix, because
+    // that can be done in-place easily. Because mf16 always
+    // allocates a square area even if actual matrix is smaller,
+    // this is not a problem.
     int n = matrix->rows;
     if (matrix->columns > n) n = matrix->columns;
+    
+    uint8_t rows = matrix->rows;
+    dest->rows = matrix->columns;
+    dest->columns = rows;
+    dest->errors = matrix->errors;
     
     for (row = 0; row < n; row++)
     {
         for (column = 0; column < row; column++)
         {
             fix16_t temp = matrix->data[row][column];
-            matrix->data[row][column] = matrix->data[column][row];
-            matrix->data[column][row] = temp;
+            dest->data[row][column] = matrix->data[column][row];
+            dest->data[column][row] = temp;
         }
+        
+        dest->data[row][row] = matrix->data[row][row];
     }
-    
-    uint8_t rows = matrix->rows;
-    matrix->rows = matrix->columns;
-    matrix->columns = rows;
 }
 
 /***************************************
  * Operations of a matrix and a scalar *
  ***************************************/
 
-void mf16_mul_s(mf16 *matrix, fix16_t scalar)
+void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar)
 {
     int row, column;
     uint8_t overflows = 0;
     
-    for (row = 0; row < matrix->rows; row++)
+    dest->rows = matrix->rows;
+    dest->columns = matrix->columns;
+    dest->errors = matrix->errors;
+    
+    for (row = 0; row < dest->rows; row++)
     {
-        for (column = 0; column < matrix->columns; column++)
+        for (column = 0; column < dest->columns; column++)
         {
             fix16_t value = matrix->data[row][column];
             fix16_t product = fix16_mul(value, scalar);
@@ -224,13 +243,13 @@ void mf16_mul_s(mf16 *matrix, fix16_t scalar)
                 overflows |= MUL_OVERFLOW(value, scalar, product);
             }
             
-            matrix->data[row][column] = product;
+            dest->data[row][column] = product;
         }
     }
     
     if (overflows)
     {
-        matrix->errors |= FIXMATRIX_OVERFLOW;
+        dest->errors |= FIXMATRIX_OVERFLOW;
     }
 }
 

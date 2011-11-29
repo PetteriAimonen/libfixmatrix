@@ -75,10 +75,12 @@ void mf16_add(mf16 *dest, const mf16 *a, const mf16 *b);
 void mf16_sub(mf16 *dest, const mf16 *a, const mf16 *b);
 
 // Operations on a single matrix
-void mf16_transpose(mf16 *matrix);
+// matrix and dest can alias.
+void mf16_transpose(mf16 *dest, const mf16 *matrix);
 
 // Operations of a matrix and a scalar
-void mf16_mul_s(mf16 *matrix, fix16_t scalar);
+// matrix and dest can alias.
+void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar);
 
 // QR-decomposition of a matrix
 //

@@ -194,6 +194,31 @@ int main()
     }
     
     {
+        mf16 a = {5, 1, 0,
+            {{fix16_from_int(1)},
+             {fix16_from_int(2)},
+             {fix16_from_int(20000)},
+             {fix16_from_int(-20000)},
+             {fix16_from_int(4)}}};
+        mf16 r;
+        
+        COMMENT("Test 5x1 transposition");
+        mf16_transpose(&r, &a);
+        TEST(r.errors == 0);
+        TEST(r.rows == 1);
+        TEST(r.columns == 5);
+        TEST(r.data[0][0] == a.data[0][0]);
+        TEST(r.data[0][1] == a.data[1][0]);
+        TEST(r.data[0][2] == a.data[2][0]);
+        TEST(r.data[0][3] == a.data[3][0]);
+        TEST(r.data[0][4] == a.data[4][0]);
+        
+        COMMENT("Test 1x5 transposition with aliasing");
+        mf16_transpose(&r, &r);
+        TEST(max_delta(&r, &a) == 0);
+    }
+    
+    {
         mf16 a = {3, 3, 0,
             {{fix16_from_int(1), fix16_from_int(2), fix16_from_int(3)},
              {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)},
