@@ -244,8 +244,8 @@ int main()
         const mf16 identity = {3, 3, 0,
             {{one, 0, 0}, {0, one, 0}, {0, 0, one}}
         };
-        TEST(max_delta(&qtq, &identity) < 5);
-        TEST(max_delta(&qr, &a) < 5);
+        TEST(max_delta(&qtq, &identity) < 10);
+        TEST(max_delta(&qr, &a) < 20);
     }
     
     {
@@ -278,16 +278,16 @@ int main()
         const mf16 identity = {3, 3, 0,
             {{one, 0, 0}, {0, one, 0}, {0, 0, one}}
         };
-        TEST(max_delta(&qtq, &identity) < 5);
-        TEST(max_delta(&qr, &a) < 10);
+        TEST(max_delta(&qtq, &identity) < 10);
+        TEST(max_delta(&qr, &a) < 20);
         
         COMMENT("Test 4x3 QR-decomposition with aliasing r = matrix");
         r = a;
         mf16_qr_decomposition(&q, &r, &r, 3);
         mf16_mul_t(&qtq, &q, &q);
         mf16_mul(&qr, &q, &r);
-        TEST(max_delta(&qtq, &identity) < 5);
-        TEST(max_delta(&qr, &a) < 10);
+        TEST(max_delta(&qtq, &identity) < 10);
+        TEST(max_delta(&qr, &a) < 20);
     }
     
     {
@@ -321,8 +321,8 @@ int main()
         const mf16 identity = {1, 1, 0,
             {{fix16_from_int(1)}}
         };
-        TEST(max_delta(&qtq, &identity) < 5);
-        TEST(max_delta(&qr, &a) < 10);
+        TEST(max_delta(&qtq, &identity) < 10);
+        TEST(max_delta(&qr, &a) < 20);
     }
     
     {
@@ -344,7 +344,7 @@ int main()
         printf("Ax = \n");
         print_matrix(&ax);
         
-        TEST(max_delta(&ax, &b) < 10);
+        TEST(max_delta(&ax, &b) < 50);
     }
     
     {
@@ -373,7 +373,7 @@ int main()
             {{fix16_from_float(-0.31426f)},
              {fix16_from_float( 1.16055f)},
              {fix16_from_float( 0.90470f)}}};
-        TEST(max_delta(&x, &ref) < 5);
+        TEST(max_delta(&x, &ref) < 20);
     }
     
     {
@@ -399,7 +399,7 @@ int main()
         
         // Note: large delta due to large values in matrix.
         // This is one of the shortcomings of fixed point format.
-        TEST(max_delta(&ax, &b) < 500);
+        TEST(max_delta(&ax, &b) < 200);
     }
     
     {
@@ -427,12 +427,12 @@ int main()
         mf16_mul(&result, &a, &inv_a);
         printf("a*inv(a) =\n");
         print_matrix(&result);
-        TEST(max_delta(&result, &identity) < 400);
+        TEST(max_delta(&result, &identity) < 200);
         
         mf16_mul(&result, &inv_a, &a);
         printf("inv(a)*a =\n");
         print_matrix(&result);
-        TEST(max_delta(&result, &identity) < 400);
+        TEST(max_delta(&result, &identity) < 200);
     }
         
     if (status != 0)
