@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "unittests.h"
 #include "fixmatrix.h"
+#include "fix16_base.h"
 
 void print_matrix(const mf16 *matrix)
 {

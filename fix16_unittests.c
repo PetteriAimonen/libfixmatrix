@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <math.h>
 #include "unittests.h"
 #include "fix16_base.h"
 
@@ -31,6 +32,14 @@ const fix16_t testcases[] = {
 
 #define TESTCASES_COUNT (sizeof(testcases)/sizeof(testcases[0]))
 
+#define delta(a,b) (((a)>=(b)) ? (a)-(b) : (b)-(a))
+
+#ifdef FIXMATH_NO_ROUNDING
+const fix16_t max_delta = 1;
+#else
+const fix16_t max_delta = 0;
+#endif
+
 int main()
 {
     int status = 0;
@@ -59,10 +68,6 @@ int main()
 #endif
     
     {
-        // Note that these tests make no assumptions on rounding.
-        // They just require that fix16_from_double and fix16_mul round
-        // identically.
-        
         unsigned int i, j;
         int failures = 0;
         COMMENT("Running testcases for multiplication");
@@ -87,7 +92,7 @@ int main()
                     continue;
                 }
                 
-                if (fresult != result)
+                if (delta(fresult, result) > max_delta)
                 {
                     printf("\n%d * %d = %d\n", a, b, result);
                     printf("%f * %f = %d\n", fa, fb, fresult);
@@ -155,12 +160,56 @@ int main()
                     continue;
                 }
                 
-                if (fresult != result)
+                if (delta(fresult, result) > max_delta)
                 {
                     printf("\n%d / %d = %d\n", a, b, result);
                     printf("%f / %f = %d\n", fa, fb, fresult);
                     failures++;
                 }
+            }
+        }
+        
+        TEST(failures == 0);
+    }
+    
+    {
+        COMMENT("Testing basic square roots");
+        TEST(fix16_sqrt(fix16_from_int(16)) == fix16_from_int(4));
+        TEST(fix16_sqrt(fix16_from_int(100)) == fix16_from_int(10));
+        TEST(fix16_sqrt(fix16_from_int(1)) == fix16_from_int(1));
+    }
+    
+#ifndef FIXMATH_NO_ROUNDING
+    {
+        COMMENT("Testing square root rounding corner cases");
+        TEST(fix16_sqrt(214748302) == 3751499);
+        TEST(fix16_sqrt(214748303) == 3751499);
+        TEST(fix16_sqrt(214748359) == 3751499);
+        TEST(fix16_sqrt(214748360) == 3751500);
+    }
+#endif
+    
+    {
+        unsigned int i;
+        int failures = 0;
+        COMMENT("Running test cases for square root");
+        
+        for (i = 0; i < TESTCASES_COUNT; i++)
+        {
+            fix16_t a = testcases[i];
+            
+            if (a < 0) continue;
+            
+            fix16_t result = fix16_sqrt(a);
+            
+            double fa = fix16_to_double(a);
+            fix16_t fresult = fix16_from_double(sqrt(fa));
+            
+            if (delta(fresult, result) > max_delta)
+            {
+                printf("\nfix16_sqrt(%d) = %d\n", a, result);
+                printf("sqrt(%f) = %d\n", fa, fresult);
+                failures++;
             }
         }
         

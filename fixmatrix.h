@@ -25,7 +25,8 @@
 #define __fixmatrix_h_
 
 #include <stdint.h>
-#include <fix16.h>
+
+typedef int32_t fix16_t;
 
 // Maximum size of matrices.
 #ifndef FIXMATRIX_MAX_SIZE

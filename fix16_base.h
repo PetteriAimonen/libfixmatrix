@@ -12,6 +12,9 @@ static const fix16_t fix16_min = 0x80000000;
 fix16_t fix16_mul(fix16_t a, fix16_t b);
 fix16_t fix16_div(fix16_t a, fix16_t b);
 
+/* Square root */
+fix16_t fix16_sqrt(fix16_t a);
+
 /* Conversion functions between fix16_t and float/integer. */
 static inline fix16_t fix16_from_int(int a) { return a * fix16_one; }
 static inline float fix16_to_float(fix16_t a) { return (float)a / fix16_one; }

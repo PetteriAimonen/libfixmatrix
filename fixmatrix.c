@@ -1,4 +1,5 @@
 #include "fixmatrix.h"
+#include "fix16_base.h"
 
 // Helper macros for detecting overflows in basic operations.
 // To reduce the number of conditional branches, they use bitwise
