@@ -227,7 +227,7 @@ int main()
         mf16 q, r, qtq, qr;
         
         COMMENT("Test 3x3 QR-decomposition");
-        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_qr_decomposition(&q, &r, &a, 1);
         printf("q =\n");
         print_matrix(&q);
         printf("r =\n");
@@ -245,8 +245,26 @@ int main()
         const mf16 identity = {3, 3, 0,
             {{one, 0, 0}, {0, one, 0}, {0, 0, one}}
         };
+        TEST(max_delta(&qtq, &identity) < 5);
+        TEST(max_delta(&qr, &a) < 5);
+        
+        COMMENT("Test 3x3 QR-decomposition without reorthogonalization");
+        mf16_qr_decomposition(&q, &r, &a, 0);
+        printf("q =\n");
+        print_matrix(&q);
+        printf("r =\n");
+        print_matrix(&r);
+        
+        mf16_mul_t(&qtq, &q, &q);
+        printf("q'q =\n");
+        print_matrix(&qtq);
+        
+        mf16_mul(&qr, &q, &r);
+        printf("qr =\n");
+        print_matrix(&qr);
+        
         TEST(max_delta(&qtq, &identity) < 10);
-        TEST(max_delta(&qr, &a) < 20);
+        TEST(max_delta(&qr, &a) < 10);
     }
     
     {
@@ -261,7 +279,7 @@ int main()
         q = a;
         
         COMMENT("Test 4x3 QR-decomposition with aliasing q = matrix");
-        mf16_qr_decomposition(&q, &r, &q, 3);
+        mf16_qr_decomposition(&q, &r, &q, 1);
         printf("q =\n");
         print_matrix(&q);
         printf("r =\n");
@@ -279,16 +297,16 @@ int main()
         const mf16 identity = {3, 3, 0,
             {{one, 0, 0}, {0, one, 0}, {0, 0, one}}
         };
-        TEST(max_delta(&qtq, &identity) < 10);
-        TEST(max_delta(&qr, &a) < 20);
+        TEST(max_delta(&qtq, &identity) < 5);
+        TEST(max_delta(&qr, &a) < 10);
         
         COMMENT("Test 4x3 QR-decomposition with aliasing r = matrix");
         r = a;
-        mf16_qr_decomposition(&q, &r, &r, 3);
+        mf16_qr_decomposition(&q, &r, &r, 1);
         mf16_mul_t(&qtq, &q, &q);
         mf16_mul(&qr, &q, &r);
-        TEST(max_delta(&qtq, &identity) < 10);
-        TEST(max_delta(&qr, &a) < 20);
+        TEST(max_delta(&qtq, &identity) < 5);
+        TEST(max_delta(&qr, &a) < 10);
     }
     
     {
@@ -305,7 +323,7 @@ int main()
         mf16 q, r, qtq, qr;
         
         COMMENT("Test 8x1 QR-decomposition");
-        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_qr_decomposition(&q, &r, &a, 1);
         printf("q =\n");
         print_matrix(&q);
         printf("r =\n");
@@ -327,6 +345,54 @@ int main()
     }
     
     {
+        // Carefully chosen to trigger overflow in subtract_projection.
+        mf16 a = {3, 3, 0,
+            {{fix16_from_int(1), fix16_from_int(32767), fix16_from_int(1)},
+             {fix16_from_int(2), fix16_from_int(-32768), fix16_from_int(0)},
+             {fix16_from_int(-1), fix16_from_int(32767), fix16_from_int(0)}}};
+        mf16 q, r, qtq;
+        
+        COMMENT("Test intermediate result overflow detection in QR decomp.");
+        
+        mf16_qr_decomposition(&q, &r, &a, 0);
+        mf16_mul_t(&qtq, &q, &q);
+        
+        printf("q'q =\n");
+        print_matrix(&qtq);
+        
+        fix16_t one = fix16_from_int(1);
+        const mf16 identity = {3, 3, 0,
+            {{one, 0, 0}, {0, one, 0}, {0, 0, one}}
+        };
+        TEST(q.errors == FIXMATRIX_OVERFLOW || max_delta(&qtq, &identity) < 50);
+    }
+    
+    {
+        mf16 a = {3, 3, 0,
+            {{fix16_from_int(535), fix16_from_int(32767), fix16_from_int(1)},
+             {fix16_from_int(2), fix16_from_int(23), fix16_from_int(400)},
+             {fix16_from_int(324), fix16_from_int(5), fix16_from_int(0)}}};
+        mf16 q, r, qtq;
+        
+        COMMENT("Test large value handling in QR decomp.");
+        
+        mf16_qr_decomposition(&q, &r, &a, 0);
+        mf16_mul_t(&qtq, &q, &q);
+        
+        printf("q =\n");
+        print_matrix(&q);
+        
+        printf("q'q =\n");
+        print_matrix(&qtq);
+        
+        fix16_t one = fix16_from_int(1);
+        const mf16 identity = {3, 3, 0,
+            {{one, 0, 0}, {0, one, 0}, {0, 0, one}}
+        };
+        TEST(max_delta(&qtq, &identity) < 50);
+    }
+    
+    {
         mf16 a = {3, 3, 0,
             {{fix16_from_int(1), fix16_from_int(2), fix16_from_int(3)},
              {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)},
@@ -336,7 +402,7 @@ int main()
         mf16 q, r, x, ax;
         
         COMMENT("Test 3x3 equation solving");
-        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_qr_decomposition(&q, &r, &a, 1);
         mf16_solve(&x, &q, &r, &b);
         printf("x = \n");
         print_matrix(&x);
@@ -345,7 +411,7 @@ int main()
         printf("Ax = \n");
         print_matrix(&ax);
         
-        TEST(max_delta(&ax, &b) < 50);
+        TEST(max_delta(&ax, &b) < 10);
     }
     
     {
@@ -364,7 +430,7 @@ int main()
         mf16 q, r, x;
         
         COMMENT("Test 4x3 least squares solving");
-        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_qr_decomposition(&q, &r, &a, 1);
         mf16_solve(&x, &q, &r, &b);
         printf("x = \n");
         print_matrix(&x);
@@ -389,7 +455,7 @@ int main()
         mf16 q, r, x, ax;
         
         COMMENT("Test 3x3 equation solving with multiple columns");
-        mf16_qr_decomposition(&q, &r, &a, 3);
+        mf16_qr_decomposition(&q, &r, &a, 1);
         mf16_solve(&x, &q, &r, &b);
         printf("x = \n");
         print_matrix(&x);
@@ -400,7 +466,7 @@ int main()
         
         // Note: large delta due to large values in matrix.
         // This is one of the shortcomings of fixed point format.
-        TEST(max_delta(&ax, &b) < 200);
+        TEST(max_delta(&ax, &b) < 100);
     }
     
     {
@@ -416,7 +482,7 @@ int main()
         mf16 q, r, result, inv_a;
         
         COMMENT("Test 4x4 matrix inversion");
-        mf16_qr_decomposition(&q, &r, &a, 0);
+        mf16_qr_decomposition(&q, &r, &a, 1);
         
         printf("q =\n");
         print_matrix(&q);
@@ -428,12 +494,12 @@ int main()
         mf16_mul(&result, &a, &inv_a);
         printf("a*inv(a) =\n");
         print_matrix(&result);
-        TEST(max_delta(&result, &identity) < 200);
+        TEST(max_delta(&result, &identity) < 100);
         
         mf16_mul(&result, &inv_a, &a);
         printf("inv(a)*a =\n");
         print_matrix(&result);
-        TEST(max_delta(&result, &identity) < 200);
+        TEST(max_delta(&result, &identity) < 100);
     }
         
     if (status != 0)

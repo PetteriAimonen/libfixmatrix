@@ -46,24 +46,24 @@ int main()
     
     {
         COMMENT("Testing basic multiplication");
-        TEST(fix16_mul(fix16_from_int(5), fix16_from_int(5)) == fix16_from_int(25));
-        TEST(fix16_mul(fix16_from_int(-5), fix16_from_int(5)) == fix16_from_int(-25));
-        TEST(fix16_mul(fix16_from_int(-5), fix16_from_int(-5)) == fix16_from_int(25));
-        TEST(fix16_mul(fix16_from_int(5), fix16_from_int(-5)) == fix16_from_int(-25));
+        TEST(fix16_omul(fix16_from_int(5), fix16_from_int(5)) == fix16_from_int(25));
+        TEST(fix16_omul(fix16_from_int(-5), fix16_from_int(5)) == fix16_from_int(-25));
+        TEST(fix16_omul(fix16_from_int(-5), fix16_from_int(-5)) == fix16_from_int(25));
+        TEST(fix16_omul(fix16_from_int(5), fix16_from_int(-5)) == fix16_from_int(-25));
     }
     
 #ifndef FIXMATH_NO_ROUNDING
     {
         COMMENT("Testing multiplication rounding corner cases");
-        TEST(fix16_mul(0, 10) == 0);
-        TEST(fix16_mul(2, 0x8000) == 1);
-        TEST(fix16_mul(-2, 0x8000) == -1);
-        TEST(fix16_mul(3, 0x8000) == 2);
-        TEST(fix16_mul(-3, 0x8000) == -2);
-        TEST(fix16_mul(2, 0x7FFF) == 1);
-        TEST(fix16_mul(-2, 0x7FFF) == -1);
-        TEST(fix16_mul(2, 0x8001) == 1);
-        TEST(fix16_mul(-2, 0x8001) == -1);
+        TEST(fix16_omul(0, 10) == 0);
+        TEST(fix16_omul(2, 0x8000) == 1);
+        TEST(fix16_omul(-2, 0x8000) == -1);
+        TEST(fix16_omul(3, 0x8000) == 2);
+        TEST(fix16_omul(-3, 0x8000) == -2);
+        TEST(fix16_omul(2, 0x7FFF) == 1);
+        TEST(fix16_omul(-2, 0x7FFF) == -1);
+        TEST(fix16_omul(2, 0x8001) == 1);
+        TEST(fix16_omul(-2, 0x8001) == -1);
     }
 #endif
     
@@ -78,7 +78,7 @@ int main()
             {
                 fix16_t a = testcases[i];
                 fix16_t b = testcases[j];
-                fix16_t result = fix16_mul(a, b);
+                fix16_t result = fix16_omul(a, b);
                 
                 double fa = fix16_to_double(a);
                 double fb = fix16_to_double(b);
@@ -86,7 +86,8 @@ int main()
                 
                 double max = fix16_to_double(fix16_max);
                 double min = fix16_to_double(fix16_min);
-                if (fa * fb > max || fa * fb < min)
+                if ((fa * fb > max || fa * fb < min)
+                    && result == fix16_overflow)
                 {
                     // Legitimate overflow
                     continue;
@@ -106,28 +107,28 @@ int main()
     
     {
         COMMENT("Testing basic division");
-        TEST(fix16_div(fix16_from_int(15), fix16_from_int(5)) == fix16_from_int(3));
-        TEST(fix16_div(fix16_from_int(-15), fix16_from_int(5)) == fix16_from_int(-3));
-        TEST(fix16_div(fix16_from_int(-15), fix16_from_int(-5)) == fix16_from_int(3));
-        TEST(fix16_div(fix16_from_int(15), fix16_from_int(-5)) == fix16_from_int(-3));
+        TEST(fix16_odiv(fix16_from_int(15), fix16_from_int(5)) == fix16_from_int(3));
+        TEST(fix16_odiv(fix16_from_int(-15), fix16_from_int(5)) == fix16_from_int(-3));
+        TEST(fix16_odiv(fix16_from_int(-15), fix16_from_int(-5)) == fix16_from_int(3));
+        TEST(fix16_odiv(fix16_from_int(15), fix16_from_int(-5)) == fix16_from_int(-3));
     }
     
 #ifndef FIXMATH_NO_ROUNDING
     {
         COMMENT("Testing division rounding corner cases");
-        TEST(fix16_div(0, 10) == 0);
-        TEST(fix16_div(1, fix16_from_int(2)) == 1);
-        TEST(fix16_div(-1, fix16_from_int(2)) == -1);
-        TEST(fix16_div(1, fix16_from_int(-2)) == -1);
-        TEST(fix16_div(-1, fix16_from_int(-2)) == 1);
-        TEST(fix16_div(3, fix16_from_int(2)) == 2);
-        TEST(fix16_div(-3, fix16_from_int(2)) == -2);
-        TEST(fix16_div(3, fix16_from_int(-2)) == -2);
-        TEST(fix16_div(-3, fix16_from_int(-2)) == 2);
-        TEST(fix16_div(2, 0x7FFF) == 4);
-        TEST(fix16_div(-2, 0x7FFF) == -4);
-        TEST(fix16_div(2, 0x8001) == 4);
-        TEST(fix16_div(-2, 0x8001) == -4);
+        TEST(fix16_odiv(0, 10) == 0);
+        TEST(fix16_odiv(1, fix16_from_int(2)) == 1);
+        TEST(fix16_odiv(-1, fix16_from_int(2)) == -1);
+        TEST(fix16_odiv(1, fix16_from_int(-2)) == -1);
+        TEST(fix16_odiv(-1, fix16_from_int(-2)) == 1);
+        TEST(fix16_odiv(3, fix16_from_int(2)) == 2);
+        TEST(fix16_odiv(-3, fix16_from_int(2)) == -2);
+        TEST(fix16_odiv(3, fix16_from_int(-2)) == -2);
+        TEST(fix16_odiv(-3, fix16_from_int(-2)) == 2);
+        TEST(fix16_odiv(2, 0x7FFF) == 4);
+        TEST(fix16_odiv(-2, 0x7FFF) == -4);
+        TEST(fix16_odiv(2, 0x8001) == 4);
+        TEST(fix16_odiv(-2, 0x8001) == -4);
     }
 #endif
     
@@ -146,7 +147,7 @@ int main()
                 // We don't require a solution for /0 :)
                 if (b == 0) continue;
                 
-                fix16_t result = fix16_div(a, b);
+                fix16_t result = fix16_odiv(a, b);
                 
                 double fa = fix16_to_double(a);
                 double fb = fix16_to_double(b);
@@ -154,7 +155,8 @@ int main()
                 
                 double max = fix16_to_double(fix16_max);
                 double min = fix16_to_double(fix16_min);
-                if (fa / fb > max || fa / fb < min)
+                if ((fa / fb > max || fa / fb < min)
+                    && result == fix16_overflow)
                 {
                     // Legitimate overflow
                     continue;

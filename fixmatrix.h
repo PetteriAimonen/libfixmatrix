@@ -25,8 +25,7 @@
 #define __fixmatrix_h_
 
 #include <stdint.h>
-
-typedef int32_t fix16_t;
+#include "fix16_base.h"
 
 // Maximum size of matrices.
 #ifndef FIXMATRIX_MAX_SIZE
@@ -95,7 +94,7 @@ void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar);
 //
 // Specifying reorthogonalize > 0 increases iterations and
 // improves result accuracy. Reorthogonalize = 0 is the fastest
-// and typically gives rounding error of 0.1-0.5%. Values >3
+// and typically gives rounding error of 0.1-0.5%. Values >1
 // rarely improve precision.
 //
 // In mf16_qr_decomposition, q and matrix, or alternatively, r and matrix

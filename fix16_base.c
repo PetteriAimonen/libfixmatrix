@@ -1,8 +1,11 @@
 #include "fix16_base.h"
-
-fix16_t fix16_mul(fix16_t a, fix16_t b)
+fix16_t fix16_omul(fix16_t a, fix16_t b)
 {
     int64_t product = (int64_t)a * b;
+    
+    // The upper 17 bits should all be the same (the sign).
+    if (product >> 63 != product >> 47)
+        return fix16_overflow;
     
 #ifdef FIXMATH_NO_ROUNDING
     return product >> 16;
@@ -24,10 +27,12 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
 #endif
 }
 
-fix16_t fix16_div(fix16_t a, fix16_t b)
+fix16_t fix16_odiv(fix16_t a, fix16_t b)
 {
 #ifdef FIXMATH_NO_ROUNDING
-    return ((int64_t)a << 16) / b;
+    int64_t quotient = ((int64_t)a << 16) / b;
+    if (quotient >> 63 != quotient >> 31) return fix16_overflow;
+    return quotient;
 #else
     // To implement rounding, we first shift temp left by 17 bits instead of
     // the 16 required by the fixed point format. The lowest bit is used
@@ -35,6 +40,9 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
     // a/b +- 0.5 = (2a/b +- 1)/2
     int64_t a_x17 = (int64_t)a << 17;
     int64_t quotient = a_x17 / b;
+    
+    if (quotient >> 63 != quotient >> 32)
+        return fix16_overflow;
     
     // Now is the time to subtract 1 for negative quotient and
     // add 1 for positive quotient. However we will do it after

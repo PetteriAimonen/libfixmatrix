@@ -12,7 +12,7 @@ run_unittests: fix16_unittests_noround fix16_unittests_round fixmatrix_unittests
 clean:
 	rm -f fix16_unittests_noround fix16_unittests_round fixmatrix_unittests
 
-fixmatrix_unittests: fixmatrix_unittests.c fixmatrix.c fixmatrix.h fix16_base.c
+fixmatrix_unittests: fixmatrix_unittests.c fixmatrix.c fixmatrix.h fix16_base.c fix16_base.h
 	$(CC) $(CFLAGS) -o $@ $^
 
 fix16_unittests_round: fix16_unittests.c fix16_base.c fix16_base.h
