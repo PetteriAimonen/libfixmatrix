@@ -36,6 +36,10 @@ static inline fix16_t fix16_oadd(fix16_t a, fix16_t b)
 
 static inline fix16_t fix16_osub(fix16_t a, fix16_t b)
 {
+    // Cannot invert fix16_min because of 2's complement limit asymmetry.
+    if (b == fix16_min)
+        return fix16_overflow;
+    
     return fix16_oadd(a, -b);
 }
 

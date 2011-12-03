@@ -175,6 +175,84 @@ int main()
     }
     
     {
+        unsigned int i, j;
+        int failures = 0;
+        COMMENT("Running testcases for addition");
+        
+        for (i = 0; i < TESTCASES_COUNT; i++)
+        {
+            for (j = 0; j < TESTCASES_COUNT; j++)
+            {
+                fix16_t a = testcases[i];
+                fix16_t b = testcases[j];
+                
+                fix16_t result = fix16_oadd(a, b);
+                
+                double fa = fix16_to_double(a);
+                double fb = fix16_to_double(b);
+                fix16_t fresult = fix16_from_double(fa + fb);
+                
+                double max = fix16_to_double(fix16_max);
+                double min = fix16_to_double(fix16_min);
+                if ((fa + fb > max || fa + fb < min)
+                    && result == fix16_overflow)
+                {
+                    // Legitimate overflow
+                    continue;
+                }
+                
+                if (delta(fresult, result) > max_delta)
+                {
+                    printf("\n%d + %d = %d\n", a, b, result);
+                    printf("%f + %f = %d\n", fa, fb, fresult);
+                    failures++;
+                }
+            }
+        }
+        
+        TEST(failures == 0);
+    }
+    
+    {
+        unsigned int i, j;
+        int failures = 0;
+        COMMENT("Running testcases for subtraction");
+        
+        for (i = 0; i < TESTCASES_COUNT; i++)
+        {
+            for (j = 0; j < TESTCASES_COUNT; j++)
+            {
+                fix16_t a = testcases[i];
+                fix16_t b = testcases[j];
+                
+                fix16_t result = fix16_osub(a, b);
+                
+                double fa = fix16_to_double(a);
+                double fb = fix16_to_double(b);
+                fix16_t fresult = fix16_from_double(fa - fb);
+                
+                double max = fix16_to_double(fix16_max);
+                double min = fix16_to_double(fix16_min);
+                if ((fa - fb > max || fa - fb < min)
+                    && result == fix16_overflow)
+                {
+                    // Legitimate overflow
+                    continue;
+                }
+                
+                if (delta(fresult, result) > max_delta)
+                {
+                    printf("\n%d - %d = %d\n", a, b, result);
+                    printf("%f - %f = %d\n", fa, fb, fresult);
+                    failures++;
+                }
+            }
+        }
+        
+        TEST(failures == 0);
+    }
+    
+    {
         COMMENT("Testing basic square roots");
         TEST(fix16_sqrt(fix16_from_int(16)) == fix16_from_int(4));
         TEST(fix16_sqrt(fix16_from_int(100)) == fix16_from_int(10));

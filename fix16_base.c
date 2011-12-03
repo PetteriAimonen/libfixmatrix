@@ -1,4 +1,5 @@
 #include "fix16_base.h"
+
 fix16_t fix16_omul(fix16_t a, fix16_t b)
 {
     int64_t product = (int64_t)a * b;
