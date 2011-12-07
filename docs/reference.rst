@@ -47,7 +47,7 @@ A matrix can be created and initialized with data using standard C syntax::
 
 .. sidebar:: Handling of overflows
     
-    The *fix16_t* datatype has a value range from -32768.0 to +32767.0. Any
+    The *fix16_t* datatype has a value range from -32768.0 to +32767.99. Any
     results outside this range will be corrupted, but this is automatically
     detected.
     
@@ -191,8 +191,8 @@ QR-decomposition of a matrix, q * r = matrix::
 
     void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogonalize);
 
-:q:         Destination for the orthonormal part of the result.
-:r:         Destination for the upper-triangular part of the result.
+:q:         Destination for the orthonormal part of the result. Will have same size as *matrix*.
+:r:         Destination for the upper-triangular part of the result. Will be square matrix with size equal to the number of columns in *matrix*.
 :matrix:    Matrix to decompose.
 :reorthogonalize: Iteration count, larger values improve precision. Value of 0 is fastest and gives usually error of less than 0.1%. If rounding is not disabled (by defining *FIXMATH_NO_ROUNDING*), values larger than 1 don't improve precision. If rounding is disabled, values up to 3 may be useful.
 
@@ -214,10 +214,28 @@ if the matrix in question contains large values. It would be possible to use
 a different fixed-point scaling for the Q matrix, but it would increase code
 size and is not currently implemented.
 
-Note that this function will cause overflows before the values in matrices
-involved are even close to the *fix16_t* limits. This is because it internally
-computes the norm of each column, and the intermediate product of this is the
-square of the norm. Therefore overflows may happen if the norm of any column
-exceeds 256.0. The overflow may not happen every time, though, because the
-linearly dependent parts of the column are subtracted first.
+This function may cause overflows even if the results would fit in the datatype.
+This can happen if a column in *matrix* has norm greater than 32768, but the
+condition is detected and indicated by an error flag in the results.
+
+mf16_solve
+----------
+Solve a system of linear equations Ax = b represented as *q* *r* *dest* = *matrix*.
+Equivalent to calculating x = inv(A) * b, or x = A\b::
+
+    void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix);
+
+:dest:      Destination for the unknown values. Will have as many rows as *q* has columns, and as many columns as *matrix*. Cannot alias with other arguments.
+:q:         The Q part of the decomposed matrix A describing the equation system.
+:r:         The R part of the decomposed matrix A describing the equation system.
+:matrix:    Known values to use in solving. Must have as many rows as *q* and any number of columns. Columns are solved one at a time.
+
+This function is meant to be used in combination with `mf16_qr_decomposition`_.
+The multiplier matrix A can be decomposed once and used to solve multiple equations.
+
+If *matrix* (b) has multiple columns, they are solved one at a time, separate from each other.
+
+By passing an identity matrix as b, this function can be used to compute the inverse of A. However, this often has a poor numerical accuracy because of rounding errors in the reciprocals. Instead, it is better to compute inv(A) * b directly.
+
+This function can cause overflows even if the result would fit, if the intermediate product of result and multiplier in *r* overflows. E.g. if *r* has an entry with value of 256.0, the maximum result for that row is 32768/256.0 = 128. The condition is detected and indicated by error flag in the output.
 

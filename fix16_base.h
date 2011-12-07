@@ -7,7 +7,10 @@ typedef int32_t fix16_t;
 static const fix16_t fix16_one = 0x10000;
 static const fix16_t fix16_max = 0x7FFFFFFF;
 static const fix16_t fix16_min = 0x80000000;
+
+#ifndef FIXMATH_NO_OVERFLOW
 static const fix16_t fix16_overflow = 0x80000000;
+#endif
 
 /* Multiplication and division with overflow detection.
  * These will return fix16_overflow if the result overflows.
@@ -25,20 +28,24 @@ static inline fix16_t fix16_oadd(fix16_t a, fix16_t b)
     // an undefined operation.
     uint32_t _a = a, _b = b;
     uint32_t sum = _a + _b;
-    
+
+#ifndef FIXMATH_NO_OVERFLOW
     // Overflow can only happen if sign of a == sign of b, and then
     // it causes sign of sum != sign of a.
     if (!((_a ^ _b) & 0x80000000) && ((_a ^ sum) & 0x80000000))
         return fix16_overflow;
+#endif
     
     return sum;
 }
 
 static inline fix16_t fix16_osub(fix16_t a, fix16_t b)
 {
+#ifndef FIXMATH_NO_OVERFLOW
     // Cannot invert fix16_min because of 2's complement limit asymmetry.
     if (b == fix16_min)
         return fix16_overflow;
+#endif
     
     return fix16_oadd(a, -b);
 }
