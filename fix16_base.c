@@ -1,6 +1,6 @@
 #include "fix16_base.h"
 
-fix16_t fix16_omul(fix16_t a, fix16_t b)
+fix16_t fix16_mul(fix16_t a, fix16_t b)
 {
     int64_t product = (int64_t)a * b;
     
@@ -30,7 +30,7 @@ fix16_t fix16_omul(fix16_t a, fix16_t b)
 #endif
 }
 
-fix16_t fix16_odiv(fix16_t a, fix16_t b)
+fix16_t fix16_div(fix16_t a, fix16_t b)
 {
 #ifdef FIXMATH_NO_ROUNDING
     int64_t quotient = ((int64_t)a << 16) / b;

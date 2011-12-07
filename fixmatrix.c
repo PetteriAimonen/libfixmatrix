@@ -14,8 +14,8 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t
     while (n--)
     {
         // Compute result
-        fix16_t product = fix16_omul(*a, *b);
-        sum = fix16_oadd(sum, product);
+        fix16_t product = fix16_mul(*a, *b);
+        sum = fix16_add(sum, product);
         
         if (sum == fix16_overflow || product == fix16_overflow)
             *errors |= FIXMATRIX_OVERFLOW;
@@ -98,9 +98,9 @@ static void mf16_addsub(mf16 *dest, const mf16 *a, const mf16 *b, uint8_t add)
         {
             fix16_t sum;
             if (add)
-                sum = fix16_oadd(a->data[row][column], b->data[row][column]);
+                sum = fix16_add(a->data[row][column], b->data[row][column]);
             else
-                sum = fix16_osub(a->data[row][column], b->data[row][column]);
+                sum = fix16_sub(a->data[row][column], b->data[row][column]);
                 
             if (sum == fix16_overflow)
                 dest->errors |= FIXMATRIX_OVERFLOW;
@@ -176,7 +176,7 @@ void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar)
         for (column = 0; column < dest->columns; column++)
         {
             fix16_t value = matrix->data[row][column];
-            fix16_t product = fix16_omul(value, scalar);
+            fix16_t product = fix16_mul(value, scalar);
             
             if (product == fix16_overflow)
                 dest->errors |= FIXMATRIX_OVERFLOW;
@@ -201,10 +201,10 @@ static void subtract_projection(fix16_t *v, const fix16_t *u, fix16_t dot, int n
     {
         // For unit vector u, u[i] <= 1
         // Therefore this multiplication cannot overflow
-        fix16_t product = fix16_omul(dot, *u);
+        fix16_t product = fix16_mul(dot, *u);
         
         // Overflow here is rare, but possible.
-        fix16_t diff = fix16_osub(*v, product);
+        fix16_t diff = fix16_sub(*v, product);
         
         if (diff == fix16_overflow)
             *errors |= FIXMATRIX_OVERFLOW;
@@ -276,14 +276,14 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
         {
             fix16_t norm_scaler = fix16_from_int(256);
             for (i = 0; i < n; i++) {
-                q->data[i][j] = fix16_odiv(q->data[i][j], norm_scaler);
+                q->data[i][j] = fix16_div(q->data[i][j], norm_scaler);
             }
             
             dot = dotproduct(&q->data[0][j], stride, &q->data[0][j], stride,
                          n, &q->errors);
             
             norm = fix16_sqrt(dot);
-            r->data[j][j] = fix16_omul(norm, norm_scaler);
+            r->data[j][j] = fix16_mul(norm, norm_scaler);
         }
         
         if (norm < 5 && norm > -5)
@@ -298,7 +298,7 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
         {
             // norm >= v[i] for all i, therefore this division
             // doesn't overflow unless norm approaches 0.
-            q->data[i][j] = fix16_odiv(q->data[i][j], norm);
+            q->data[i][j] = fix16_div(q->data[i][j], norm);
         }
     }
     
@@ -329,8 +329,8 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
             {
                 fix16_t multiplier = r->data[row][variable];
                 fix16_t known_value = dest->data[variable][column];
-                fix16_t product = fix16_omul(multiplier, known_value);
-                value = fix16_osub(value, product);
+                fix16_t product = fix16_mul(multiplier, known_value);
+                value = fix16_sub(value, product);
                 
                 if (product == fix16_overflow || value == fix16_overflow)
                 {
@@ -347,7 +347,7 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
                 continue;
             }
             
-            fix16_t result = fix16_odiv(value, divider);
+            fix16_t result = fix16_div(value, divider);
             dest->data[row][column] = result;
             
             if (result == fix16_overflow)

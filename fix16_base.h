@@ -15,14 +15,14 @@ static const fix16_t fix16_overflow = 0x80000000;
 /* Multiplication and division with overflow detection.
  * These will return fix16_overflow if the result overflows.
  */
-fix16_t fix16_omul(fix16_t a, fix16_t b);
-fix16_t fix16_odiv(fix16_t a, fix16_t b);
+fix16_t fix16_mul(fix16_t a, fix16_t b);
+fix16_t fix16_div(fix16_t a, fix16_t b);
 
 /* Square root */
 fix16_t fix16_sqrt(fix16_t a);
 
 /* Subtraction and addition with overflow detection. */
-static inline fix16_t fix16_oadd(fix16_t a, fix16_t b)
+static inline fix16_t fix16_add(fix16_t a, fix16_t b)
 {
     // Use unsigned integers because overflow with signed integers is
     // an undefined operation.
@@ -39,7 +39,7 @@ static inline fix16_t fix16_oadd(fix16_t a, fix16_t b)
     return sum;
 }
 
-static inline fix16_t fix16_osub(fix16_t a, fix16_t b)
+static inline fix16_t fix16_sub(fix16_t a, fix16_t b)
 {
 #ifndef FIXMATH_NO_OVERFLOW
     // Cannot invert fix16_min because of 2's complement limit asymmetry.
@@ -47,7 +47,7 @@ static inline fix16_t fix16_osub(fix16_t a, fix16_t b)
         return fix16_overflow;
 #endif
     
-    return fix16_oadd(a, -b);
+    return fix16_add(a, -b);
 }
 
 /* Conversion functions between fix16_t and float/integer. */
