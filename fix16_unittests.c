@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 #include "unittests.h"
 #include "fix16_base.h"
 
@@ -89,15 +90,22 @@ int main()
                 
                 double max = fix16_to_double(fix16_max);
                 double min = fix16_to_double(fix16_min);
-                if ((fa * fb > max || fa * fb < min)
-                    && result == fix16_overflow)
-                {
-                    // Legitimate overflow
-                    continue;
-                }
                 
                 if (delta(fresult, result) > max_delta)
                 {
+                    if (fa * fb > max || fa * fb < min)
+                    {
+                        #ifndef FIXMATH_NO_OVERFLOW
+                        if (result != fix16_overflow)
+                        {
+                            printf("\n%d * %d overflow not detected!\n", a, b);
+                            failures++;
+                        }
+                        #endif
+                        // Legitimate overflow
+                        continue;
+                    }
+                    
                     printf("\n%d * %d = %d\n", a, b, result);
                     printf("%f * %f = %d\n", fa, fb, fresult);
                     failures++;
@@ -157,16 +165,22 @@ int main()
                 fix16_t fresult = fix16_from_double(fa / fb);
                 
                 double max = fix16_to_double(fix16_max);
-                double min = fix16_to_double(fix16_min);
-                if ((fa / fb > max || fa / fb < min)
-                    && result == fix16_overflow)
-                {
-                    // Legitimate overflow
-                    continue;
-                }
-                
+                double min = fix16_to_double(fix16_min);                
                 if (delta(fresult, result) > max_delta)
                 {
+                    if (fa / fb > max || fa / fb < min)
+                    {
+                        #ifndef FIXMATH_NO_OVERFLOW
+                        if (result != fix16_overflow)
+                        {
+                            printf("\n%d / %d overflow not detected!\n", a, b);
+                            failures++;
+                        }
+                        #endif
+                        // Legitimate overflow
+                        continue;
+                    }
+                    
                     printf("\n%d / %d = %d\n", a, b, result);
                     printf("%f / %f = %d\n", fa, fb, fresult);
                     failures++;
@@ -197,15 +211,22 @@ int main()
                 
                 double max = fix16_to_double(fix16_max);
                 double min = fix16_to_double(fix16_min);
-                if ((fa + fb > max || fa + fb < min)
-                    && result == fix16_overflow)
-                {
-                    // Legitimate overflow
-                    continue;
-                }
                 
                 if (delta(fresult, result) > max_delta)
                 {
+                    if (fa + fb > max || fa + fb < min)
+                    {
+                        #ifndef FIXMATH_NO_OVERFLOW
+                        if (result != fix16_overflow)
+                        {
+                            printf("\n%d + %d overflow not detected!\n", a, b);
+                            failures++;
+                        }
+                        #endif
+                        // Legitimate overflow
+                        continue;
+                    }
+                    
                     printf("\n%d + %d = %d\n", a, b, result);
                     printf("%f + %f = %d\n", fa, fb, fresult);
                     failures++;
@@ -236,15 +257,22 @@ int main()
                 
                 double max = fix16_to_double(fix16_max);
                 double min = fix16_to_double(fix16_min);
-                if ((fa - fb > max || fa - fb < min)
-                    && result == fix16_overflow)
-                {
-                    // Legitimate overflow
-                    continue;
-                }
                 
                 if (delta(fresult, result) > max_delta)
                 {
+                    if (fa - fb > max || fa - fb < min)
+                    {
+                        #ifndef FIXMATH_NO_OVERFLOW
+                        if (result != fix16_overflow)
+                        {
+                            printf("\n%d - %d overflow not detected!\n", a, b);
+                            failures++;
+                        }
+                        #endif
+                        // Legitimate overflow
+                        continue;
+                    }
+                    
                     printf("\n%d - %d = %d\n", a, b, result);
                     printf("%f - %f = %d\n", fa, fb, fresult);
                     failures++;
