@@ -16,6 +16,9 @@ const fix16_t testcases[] = {
     // Fractions (1/2, 1/4, 1/8)
     0x8000, -0x8000, 0x4000, -0x4000, 0x2000, -0x2000,
     
+    // Problematic carry
+    0xFFFF, -0xFFFF, 0x1FFFF, -0x1FFFF, 0x3FFFF, -0x3FFFF,
+    
     // Smallest and largest values
     0x7FFFFFFF, 0x80000000,
     
