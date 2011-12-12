@@ -40,48 +40,91 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
     #endif
 }
 
+#ifdef __GNUC__
+#define clz(x) __builtin_clz(x)
+#else
+static uint8_t clz(uint32_t x)
+{
+    uint8_t result = 0;
+    while (!(x & 0xF0000000)) { result += 4; x <<= 4; }
+    while (!(x & 0x80000000)) { result += 1; x <<= 1; }
+    return result;
+}
+#endif
+
 fix16_t fix16_div(fix16_t a, fix16_t b)
 {
-    #ifdef FIXMATH_NO_ROUNDING
-    int64_t quotient = ((int64_t)a << 16) / b;
+    // This uses a hardware 32/32 bit division multiple times, until we have
+    // computed all the bits in (a<<16)/b. Usually this takes 1-3 iterations.
     
-    #ifndef FIXMATH_NO_OVERFLOW
-    if (quotient >> 63 != quotient >> 31)
-        return fix16_overflow;
+    if (b == 0)
+        return fix16_min;
+    
+    uint32_t remainder = (a >= 0) ? a : (-a);
+    uint32_t divider = (b >= 0) ? b : (-b);
+    uint32_t quotient = 0;
+    int bit_pos = 17;
+    
+    // Kick-start the division a bit.
+    // This improves speed in the worst-case scenarios where N and D are large
+    // It gets a lower estimate for the result by N/(D >> 17 + 1).
+    if (divider & 0xFFF00000)
+    {
+        uint32_t shifted_div = ((divider >> 17) + 1);
+        quotient = remainder / shifted_div;
+        remainder -= ((uint64_t)quotient * divider) >> 17;
+    }
+    
+    // If the divider is divisible by 2^n, take advantage of it.
+    while (!(divider & 0xF) && bit_pos >= 4)
+    {
+        divider >>= 4;
+        bit_pos -= 4;
+    }
+    
+    while (bit_pos >= 0)
+    {
+        // Shift remainder as much as we can without overflowing
+        int shift = clz(remainder);
+        if (shift > bit_pos) shift = bit_pos;
+        remainder <<= shift;
+        bit_pos -= shift;
+        
+        uint32_t div = remainder / divider;
+        remainder = remainder % divider;
+        quotient += div << bit_pos;
+        
+        #ifndef FIXMATH_NO_OVERFLOW
+        if (div & ~(0xFFFFFFFF >> bit_pos))
+            return fix16_overflow;
+        #endif
+        
+        remainder <<= 1;
+        bit_pos--;
+        
+        if (remainder == 0)
+            break;
+    }
+    
+    #ifndef FIXMATH_NO_ROUNDING
+    // Quotient is always positive so rounding is easy
+    quotient++;
     #endif
     
-    return quotient;
-    #else
-    // To implement rounding, we first shift temp left by 17 bits instead of
-    // the 16 required by the fixed point format. The lowest bit is used
-    // for rounding.
-    // a/b +- 0.5 = (2a/b +- 1)/2
-    int64_t a_x17 = (int64_t)a << 17;
-    int64_t quotient = a_x17 / b;
-
-    #ifndef FIXMATH_NO_OVERFLOW
-    if (quotient >> 63 != quotient >> 32)
-        return fix16_overflow;
-    #endif
-    
-    // Now is the time to subtract 1 for negative quotient and
-    // add 1 for positive quotient. However we will do it after
-    // "dividing" by 2, because right shift is not really same
-    // as dividing for negative numbers. This way we can fix
-    // two things at once.
     fix16_t result = quotient >> 1;
     
-    // Now depending on result sign and quotient lowest bit add:
-    // negative, 0:   0 + 0 =  0
-    // negative, 1:  -1 + 1 =  0
-    // positive, 0:   0 + 0 =  0
-    // positive, 1:   1 + 0 =  1
-    //                ^   ^--- Fix for shift vs. divide
-    //                `------- Fix for quotient +-= 1 
-    if (result >= 0) result += quotient & 1;
+    // Figure out the sign of the result
+    if ((a ^ b) & 0x80000000)
+    {
+        #ifndef FIXMATH_NO_OVERFLOW
+        if (result == fix16_min)
+            return fix16_overflow;
+        #endif
+        
+        result = -result;
+    }
     
     return result;
-    #endif
 }
 
 #else /* 32-bit implementations for compilers without int64_t. */
@@ -141,109 +184,13 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
 #endif
 }
 
-#ifdef __GNUC__
-#define clz(x) __builtin_clz(x)
-#else
-static uint8_t clz(uint32_t x)
-{
-    uint8_t result = 0;
-    while (!(x & 0xF0000000)) { result += 4; x <<= 4; }
-    while (!(x & 0x80000000)) { result += 1; x <<= 1; }
-    return result;
-}
-#endif
-
-#include <stdio.h>
-fix16_t fix16_div(fix16_t a, fix16_t b)
-{
-    // This uses the basic binary restoring division algorithm.
-    // It appears to be faster to do the whole division manually than
-    // trying to compose a 64-bit divide out of 32-bit divisions and
-    // multiplications, especially on platforms without hardware divide.
-    
-    if (b == 0)
-        return fix16_min;
-    
-    uint32_t remainder = (a >= 0) ? a : (-a);
-    uint32_t divider = (b >= 0) ? b : (-b);
-    uint32_t quotient = 0;
-    int bit_pos = 17;
-    
-//     printf("--\n");
-//     printf("%12u/%12u %08x %d\n", remainder, divider, quotient, bit_pos);
-    
-    // Kick-start the division a bit.
-    // This improves speed in the worst-case scenarios where N and D are large
-    // It gets a lower estimate for the result by N/(D >> 17 + 1).
-    if (divider & 0xFFF00000)
-    {
-        printf("here\n");
-        uint32_t shifted_div = ((divider >> 17) + 1);
-        quotient = remainder / shifted_div;
-        remainder -= ((uint64_t)quotient * divider) >> 17;
-    }
-    
-//     printf("%12u/%12u %08x %d\n", remainder, divider, quotient, bit_pos);
-    
-    while (!(divider & 1) && bit_pos >= 1)
-    {
-        divider >>= 1;
-        bit_pos -= 1;
-    }
-    
-    while (bit_pos >= 0)
-    {
-        int shift = clz(remainder);
-        if (shift > bit_pos) shift = bit_pos;
-        remainder <<= shift;
-        bit_pos -= shift;
-        
-//         printf("%12u/%12u %08x %d\n", remainder, divider, quotient, bit_pos);
-        uint32_t div = remainder / divider;
-        remainder = remainder % divider;
-        quotient += div << bit_pos;
-        
-        #ifndef FIXMATH_NO_OVERFLOW
-        if (div & ~(0xFFFFFFFF >> bit_pos))
-            return fix16_overflow;
-        #endif
-        
-        remainder <<= 1;
-        bit_pos--;
-        
-        if (remainder == 0)
-            break;
-    }
-    
-//     printf("%12u/%12u %08x %d\n", remainder, divider, quotient, bit_pos);
-    
-    #ifndef FIXMATH_NO_ROUNDING
-    quotient++;
-    #endif
-    
-    fix16_t result = quotient >> 1;
-    
-    if ((a ^ b) & 0x80000000)
-    {
-        #ifndef FIXMATH_NO_OVERFLOW
-        if (result == fix16_min)
-            return fix16_overflow;
-        #endif
-        
-        result = -result;
-    }
-    
-    return result;
-}
-#endif
-
-#if 0
 fix16_t fix16_div(fix16_t a, fix16_t b)
 {
     // This uses the basic binary non-restoring division algorithm.
-    // It appears to be faster to do the whole division manually than
-    // trying to compose a 64-bit divide out of 32-bit divisions and
-    // multiplications, especially on platforms without hardware divide.
+    // It relies on the assumption that platforms without uint64_t
+    // probably don't have hardware division either. Therefore it is
+    // faster to do the whole division manually than composing
+    // a 64-bit divide out of 32-bit divisions and multiplications.
     
     if (b == 0)
         return fix16_min;
