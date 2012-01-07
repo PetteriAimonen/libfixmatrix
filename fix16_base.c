@@ -41,6 +41,7 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
 }
 
 #ifdef __GNUC__
+// Count leading zeros, using processor-specific instruction if available.
 #define clz(x) __builtin_clz(x)
 #else
 static uint8_t clz(uint32_t x)
@@ -186,122 +187,69 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
 
 fix16_t fix16_div(fix16_t a, fix16_t b)
 {
-    // This uses the basic binary non-restoring division algorithm.
-    // It relies on the assumption that platforms without uint64_t
-    // probably don't have hardware division either. Therefore it is
-    // faster to do the whole division manually than composing
-    // a 64-bit divide out of 32-bit divisions and multiplications.
+    // This uses the basic binary restoring division algorithm.
+    // It appears to be faster to do the whole division manually than
+    // trying to compose a 64-bit divide out of 32-bit divisions on
+    // platforms without hardware divide.
     
     if (b == 0)
         return fix16_min;
     
-    int32_t remainder = a;
+    uint32_t remainder = (a >= 0) ? a : (-a);
     uint32_t divider = (b >= 0) ? b : (-b);
-    uint32_t p_quotient = 0; // positive bits
-    uint32_t n_quotient = 0; // negative bits
-    uint32_t bit_pos = 65536;
+
+    uint32_t quotient = 0;
+    uint32_t bit = 0x10000;
     
-    // The non-restoring division requires that |D| >= |N|.
-    uint32_t abs_rem = (remainder >= 0) ? remainder : (-remainder);
-    while (divider < abs_rem)
+    /* The algorithm requires D >= R */
+    while (divider < remainder)
     {
         divider <<= 1;
-        bit_pos <<= 1;
+        bit <<= 1;
     }
     
     #ifndef FIXMATH_NO_OVERFLOW
-    if (bit_pos == 0)
+    if (!bit)
         return fix16_overflow;
     #endif
-    bit_pos >>= 1;
     
     if (divider & 0x80000000)
     {
-        // Divider would not fit in signed 32 bit integer.
-        // Perform one step of division separately to avoid overflows later.
-        // We know that the dividers bottom bit is zero here.
+        // Perform one step manually to avoid overflows later.
+        // We know that divider's bottom bit is 0 here.
+        if (remainder >= divider)
+        {
+            quotient |= bit;
+            remainder -= divider;
+        }
         divider >>= 1;
-        if (remainder > 0)
-        {
-            p_quotient |= bit_pos;
-            remainder -= divider;
-        }
-        else
-        {
-            n_quotient |= bit_pos;
-            remainder += divider;
-        }
-        bit_pos >>= 1;
+        bit >>= 1;
     }
     
-    // This is the division main loop
-    while (bit_pos)
+    /* Main division loop */
+    while (bit && remainder)
     {
-        if (remainder > 0)
+        if (remainder >= divider)
         {
-            p_quotient |= bit_pos;
-            
-            // This shift may overflow, but it all works out after the
-            // subtraction :)
-            remainder <<= 1;
+            quotient |= bit;
             remainder -= divider;
-        }
-        else if (remainder < 0)
-        {
-            n_quotient |= bit_pos;
-            
-            remainder <<= 1;
-            remainder += divider;
-        }
-        else
-        {
-            break; // All done, remainder = 0
         }
         
-        bit_pos >>= 1;
-    }
-    
-    // Convert result to normal binary
-    int32_t result = p_quotient - n_quotient;
-    
+        remainder <<= 1;
+        bit >>= 1;
+    }   
+        
     #ifndef FIXMATH_NO_ROUNDING
-    // Figure out rounding based on the remainder
-    // This is the same as calculating two extra bits, like this:
-    // 00  -3  1/4
-    // 0-  -2  2/4
-    // 01  -1  3/4
-    // --   0  0/4
-    // 10   1  1/4
-    // 1-   2  2/4
-    // 11   3  3/4
-    // ^    ^  ^--- fractional part of the result (2/4, 3/4 round away from 0)
-    // |    `------ extra bits converted to decimal, neg -> result--
-    // `----------- extra bits (+1,-1 coded)
-    
-    if (remainder != 0)
+    if (remainder >= divider)
     {
-        if (remainder > 0)
-        {
-            // First extra bit is +1
-            remainder <<= 1;
-            remainder -= divider;
-        }
-        else if (remainder < 0)
-        {
-            // First extra bit is -1
-            result--;
-            remainder <<= 1;
-            remainder += divider;
-        }
-        
-        if (result >= 0 && remainder >= 0)
-            result++;
-        else if (result < 0 && remainder > 0)
-            result++;
+        quotient++;
     }
     #endif
     
-    if (b < 0)
+    fix16_t result = quotient;
+    
+    /* Figure out the sign of result */
+    if ((a ^ b) & 0x80000000)
     {
         #ifndef FIXMATH_NO_OVERFLOW
         if (result == fix16_min)
@@ -314,7 +262,6 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
     return result;
 }
 #endif
-
 
 fix16_t fix16_sqrt(fix16_t a)
 {
