@@ -41,13 +41,17 @@ static inline fix16_t fix16_add(fix16_t a, fix16_t b)
 
 static inline fix16_t fix16_sub(fix16_t a, fix16_t b)
 {
+    uint32_t _a = a, _b = b;
+    uint32_t diff = _a - _b;
+
 #ifndef FIXMATH_NO_OVERFLOW
-    // Cannot invert fix16_min because of 2's complement limit asymmetry.
-    if (b == fix16_min)
+    // Overflow can only happen if sign of a != sign of b, and then
+    // it causes sign of diff != sign of a.
+    if (((_a ^ _b) & 0x80000000) && ((_a ^ diff) & 0x80000000))
         return fix16_overflow;
 #endif
     
-    return fix16_add(a, -b);
+    return diff;
 }
 
 /* Conversion functions between fix16_t and float/integer. */

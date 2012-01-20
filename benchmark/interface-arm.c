@@ -9,19 +9,24 @@
 #define STCURRENT (*(volatile uint32_t*)(0x018 + STBASE))
 
 
+void interface_init()
+{
+    STRELOAD = 0x00FFFFFF;
+    STCTRL = 5;
+}
+
 void start_timing()
 {
-     STRELOAD = 0x00FFFFFF;
-     STCTRL = 5;
      STCURRENT = 0;
 }
 
-timestamp_t end_timing()
+uint16_t end_timing()
 {
      return 0x00FFFFFF - STCURRENT - 4;
 }
 
-void print_timing(const char *function_name, timestamp_t cycles)
+void print_value(const char *label, int32_t value)
 {
-    printf("%20s %8d\n", function_name, cycles);
+    printf("%-20s %ld\n", label, value);
 }
+

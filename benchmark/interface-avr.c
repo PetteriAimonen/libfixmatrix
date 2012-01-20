@@ -1,47 +1,39 @@
 #include <avr/io.h>
+#include <stdio.h>
 #include "interface.h"
 #include <stdint.h>
 
+#define special_output_port (*((volatile char *)0x20))
+static int output_char(char c, FILE *stream)
+{
+    special_output_port = c;
+    return 0;
+}
+
+static FILE mystdout = FDEV_SETUP_STREAM(output_char, NULL, _FDEV_SETUP_WRITE);
+
+void interface_init()
+{
+    // Set timer 1 to count cycles
+    TCCR1B = 1;
+    
+    // Set output to simulator
+    stdout = &mystdout;
+    stderr = &mystdout;
+}
+
+
 void start_timing()
 {
-    TCCR1B = 1;
     TCNT1 = 0;
 }
 
-timestamp_t end_timing()
+uint16_t end_timing()
 {
-    return TCNT1;
+    return TCNT1 - 9;
 }
 
-#define special_output_port (*((volatile char *)0x20))
-
-void print_timing(const char *function_name, timestamp_t cycles)
+void print_value(const char *label, int32_t value)
 {
-    uint8_t i = 0;
-    while (*function_name)
-    {
-        special_output_port = *function_name++;
-        i++;
-    }
-    
-    while (i++ < 20)
-        special_output_port = ' ';
-    
-    uint8_t first = 1;
-    for (i = 0; i < 8; i++)
-    {
-        uint8_t digit = cycles / 10000000;
-        cycles -= digit * 10000000;
-        cycles *= 10;
-        
-        if (!first || digit != 0)
-        {
-            special_output_port = '0' + digit;
-            first = 0;
-        } else {
-            special_output_port = ' ';
-        }
-    }
-    
-    special_output_port = '\n';
+    printf("%-20s %ld\n", label, value);
 }

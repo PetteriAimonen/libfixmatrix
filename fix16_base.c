@@ -132,6 +132,86 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
 
 fix16_t fix16_mul(fix16_t a, fix16_t b)
 {
+    uint32_t _a = (a >= 0) ? a : (-a);
+    uint32_t _b = (b >= 0) ? b : (-b);
+    
+    uint8_t va[4] = {_a, (_a >> 8), (_a >> 16), (_a >> 24)};
+    uint8_t vb[4] = {_b, (_b >> 8), (_b >> 16), (_b >> 24)};
+    
+    uint32_t low = 0;
+    uint32_t mid = 0;
+    
+    uint8_t i, j;
+    
+    // Result column i depends on va[0..i] and vb[i..0]
+
+    #ifndef FIXMATH_NO_OVERFLOW
+    // i = 6
+    if (va[3] && vb[3]) return fix16_overflow;
+    #endif
+    
+    // i = 5
+    if (va[2] && vb[3]) mid += (uint16_t)va[2] * vb[3];
+    if (va[3] && vb[2]) mid += (uint16_t)va[3] * vb[2];
+    mid <<= 8;
+    
+    // i = 4
+    if (va[1] && vb[3]) mid += (uint16_t)va[1] * vb[3];
+    if (va[2] && vb[2]) mid += (uint16_t)va[2] * vb[2];
+    if (va[3] && vb[1]) mid += (uint16_t)va[3] * vb[1];
+    
+    #ifndef FIXMATH_NO_OVERFLOW
+    if (mid & 0xFF000000) return fix16_overflow;
+    #endif
+    mid <<= 8;
+    
+    // i = 3
+    if (va[0] && vb[3]) mid += (uint16_t)va[0] * vb[3];
+    if (va[1] && vb[2]) mid += (uint16_t)va[1] * vb[2];
+    if (va[2] && vb[1]) mid += (uint16_t)va[2] * vb[1];
+    if (va[3] && vb[0]) mid += (uint16_t)va[3] * vb[0];
+    
+    #ifndef FIXMATH_NO_OVERFLOW
+    if (mid & 0xFF000000) return fix16_overflow;
+    #endif
+    mid <<= 8;
+    
+    // i = 2
+    if (va[0] && vb[2]) mid += (uint16_t)va[0] * vb[2];
+    if (va[1] && vb[1]) mid += (uint16_t)va[1] * vb[1];
+    if (va[2] && vb[0]) mid += (uint16_t)va[2] * vb[0];    
+    
+    // i = 1
+    if (va[0] && vb[1]) low += (uint16_t)va[0] * vb[1];
+    if (va[1] && vb[0]) low += (uint16_t)va[1] * vb[0];
+    low <<= 8;
+    
+    // i = 0
+    if (va[0] && vb[0]) low += (uint16_t)va[0] * vb[0];
+    
+    #ifndef FIXMATH_NO_ROUNDING
+    low += 0x8000;
+    #endif
+    mid += (low >> 16);
+    
+    #ifndef FIXMATH_NO_OVERFLOW
+    if (mid & 0x80000000)
+        return fix16_overflow;
+    #endif
+    
+    fix16_t result = mid;
+    
+    /* Figure out the sign of result */
+    if ((a ^ b) & 0x80000000)
+    {
+        result = -result;
+    }
+    
+    return result;
+}
+
+/*fix16_t fix16_mul(fix16_t a, fix16_t b)
+{
     // Each argument is divided to 16-bit parts.
     //          AB
     //      *   CD
@@ -183,7 +263,7 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
     result += 1;
     return result;
 #endif
-}
+}*/
 
 fix16_t fix16_div(fix16_t a, fix16_t b)
 {
