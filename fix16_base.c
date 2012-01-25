@@ -128,7 +128,7 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
     return result;
 }
 
-#else /* 32-bit implementations for compilers without int64_t. */
+#else /* 32-bit implementations for compilers without int64_t and for 8-bit platforms. */
 
 fix16_t fix16_mul(fix16_t a, fix16_t b)
 {
@@ -140,8 +140,6 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
     
     uint32_t low = 0;
     uint32_t mid = 0;
-    
-    uint8_t i, j;
     
     // Result column i depends on va[0..i] and vb[i..0]
 
@@ -209,61 +207,6 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
     
     return result;
 }
-
-/*fix16_t fix16_mul(fix16_t a, fix16_t b)
-{
-    // Each argument is divided to 16-bit parts.
-    //          AB
-    //      *   CD
-    // -----------
-    //          BD  16 * 16 -> 32 bit products
-    //         CB
-    //         AD
-    //        AC
-    //       |----| 64 bit product
-    int32_t A = (a >> 16), C = (b >> 16);
-    uint32_t B = (a & 0xFFFF), D = (b & 0xFFFF);
-    
-    int32_t AC = A*C;
-    int32_t AD_CB = A*D + C*B;
-    uint32_t BD = B*D;
-    
-    int32_t product_hi = AC + (AD_CB >> 16);
-    
-    // Handle carry from lower 32 bits to upper part of result.
-    uint32_t ad_cb_temp = AD_CB << 16;
-    uint32_t product_lo = BD + ad_cb_temp;
-    if (product_lo < BD)
-        product_hi++;
-    
-#ifndef FIXMATH_NO_OVERFLOW
-    // The upper 17 bits should all be the same (the sign).
-    if (product_hi >> 31 != product_hi >> 15)
-        return fix16_overflow;
-#endif
-    
-#ifdef FIXMATH_NO_ROUNDING
-    return (product_hi << 16) | (product_lo >> 16);
-#else
-    // Subtracting 0x8000 (= 0.5) and then using signed right shift
-    // achieves proper rounding to result-1, except in the corner
-    // case of negative numbers and lowest word = 0x8000.
-    // To handle that, we also have to subtract 1 for negative numbers.
-    uint32_t product_lo_tmp = product_lo;
-    product_lo -= 0x8000;
-    product_lo -= (uint32_t)product_hi >> 31;
-    if (product_lo > product_lo_tmp)
-        product_hi--;
-    
-    // Discard the lowest 16 bits. Note that this is not exactly the same
-    // as dividing by 0x10000. For example if product = -1, result will
-    // also be -1 and not 0. This is compensated by adding +1 to the result
-    // and compensating this in turn in the rounding above.
-    fix16_t result = (product_hi << 16) | (product_lo >> 16);
-    result += 1;
-    return result;
-#endif
-}*/
 
 fix16_t fix16_div(fix16_t a, fix16_t b)
 {
