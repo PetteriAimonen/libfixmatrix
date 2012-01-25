@@ -1,61 +1,37 @@
+# These are testcases & benchmarks for the library on the target processors
+# (currently ARM Cortex M3 and AVR). They are a bit tricky to run, as they
+# depend on specific simulator versions.
 
+# For testing the fix16_base.c implementation
+FILES = benchmark.c ../fix16_base.c
 
-benchmark-arm.elf: benchmark.c interface-arm.c ../fix16_base.c
+# For comparing with the stock libfixmath
+#FILES = benchmark.c ../../libfixmath/fix16.c ../../libfixmath/fix16_sqrt.c
+
+CFLAGS = -DFIXMATH_NO_OVERFLOW
+
+testcases.c: generate_testcases.py
+	python $<
+
+benchmark-arm.elf: $(FILES) interface-arm.c testcases.c
+	# Note: this needs hacked QEmu that "makes no sense":
+	# https://bugs.launchpad.net/qemu/+bug/696094
 	arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -T generic-m-hosted.ld \
-		-Wall -O2 \
-		-o $@ -I .. $^ -lm
+		-Wall -O2 $(CFLAGS) \
+		-o $@ -I .. $(FILES) interface-arm.c -lm
 
 run-benchmark-arm: benchmark-arm.elf
 	qemu-system-arm -cpu cortex-m3 -icount 0 -device armv7m_nvic \
 		-nographic -monitor null -serial null \
 		-semihosting -kernel $<
 
-benchmark-avr.elf: benchmark.c interface-avr.c ../fix16_base.c
-	avr-gcc -Wall -mmcu=atmega128 \
+benchmark-avr.elf: $(FILES) interface-avr.c testcases.c
+	avr-gcc -Wall -mmcu=atmega128 $(CFLAGS) \
 		-Wall -O2 -DFIXMATH_NO_64BIT \
-		-o $@ -I .. $^
+		-o $@ -I .. $(FILES) interface-arm.c
 
 run-benchmark-avr: benchmark-avr.elf
 	# Note: this needs simulavrxx 1.0rc0 or newer
 	simulavr -d atmega128 -f $< -W 0x20,- -T exit
 
-
-benchmark-arm-orig.elf: benchmark.c interface-arm.c ../../libfixmath/fix16.c ../../libfixmath/fix16_sqrt.c
-	arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -T generic-m-hosted.ld \
-		-Wall -O2 \
-		-o $@ -I .. $^ -lm
-
-run-benchmark-arm-orig: benchmark-arm-orig.elf
-	qemu-system-arm -cpu cortex-m3 -icount 0 -device armv7m_nvic \
-		-nographic -monitor null -serial null \
-		-semihosting -kernel $<
-
-benchmark-avr-orig.elf: benchmark.c interface-avr.c ../../libfixmath/fix16.c ../../libfixmath/fix16_sqrt.c 
-	avr-gcc -Wall -mmcu=atmega128 \
-		-Wall -O2 -DFIXMATH_NO_64BIT \
-		-o $@ -I .. $^
-
-run-benchmark-avr-orig: benchmark-avr-orig.elf
-	# Note: this needs simulavrxx 1.0rc0 or newer
-	simulavr -d atmega128 -f $< -W 0x20,- -T exit
-
-
-unittests-arm.elf: ../fix16_unittests.c ../fix16_base.c
-	arm-none-eabi-gcc -mcpu=cortex-m3 -mthumb -T generic-m-hosted.ld \
-		 -O2 \
-		-o $@ -I .. $^ -lm
-
-run-unittests-arm: unittests-arm.elf
-	qemu-system-arm -cpu cortex-m3 -icount 0 -device armv7m_nvic \
-		-nographic -monitor null -serial null \
-		-semihosting -kernel $<
-
-unittests-avr.elf: fix16_unittests.c ../fix16_base.c
-	avr-gcc -Wall -mmcu=atmega128 \
-		-O2 -DFIXMATH_NO_64BIT \
-		-o $@ -I .. $^
-
-run-unittests-avr: unittests-avr.elf
-	# Note: this needs simulavrxx 1.0rc0 or newer
-	simulavr -d atmega128 -f $< -W 0x20,- -T exit
 

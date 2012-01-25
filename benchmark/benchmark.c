@@ -96,7 +96,7 @@ int main()
     {
         fix16_t a = testcases2[i].a;
         fix16_t b = testcases2[i].b;
-        fix16_t result;
+        volatile fix16_t result;
         
         fix16_t expected = testcases2[i].add;
         MEASURE(add_cycles, result = fix16_add(a, b));
