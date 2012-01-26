@@ -420,8 +420,8 @@ fix16_t fix16_sqrt(fix16_t a)
                 //     = num + result^2 - (result + 0.5)^2
                 //     = num - result - 0.5
                 num -= result;
-                num = (num << 16) - (1 << 15);
-                result = (result << 16) + (1 << 15);
+                num = (num << 16) - 0x8000;
+                result = (result << 16) + 0x8000;
             }
             else
             {
