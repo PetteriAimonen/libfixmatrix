@@ -54,11 +54,12 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
 #if !defined(FIXMATH_OPTIMIZE_8BIT)
 #ifdef __GNUC__
 // Count leading zeros, using processor-specific instruction if available.
-#define clz(x) __builtin_clz(x)
+#define clz(x) __builtin_clzl(x)
 #else
 static uint8_t clz(uint32_t x)
 {
     uint8_t result = 0;
+    if (x == 0) return 32;
     while (!(x & 0xF0000000)) { result += 4; x <<= 4; }
     while (!(x & 0x80000000)) { result += 1; x <<= 1; }
     return result;
@@ -68,7 +69,7 @@ static uint8_t clz(uint32_t x)
 fix16_t fix16_div(fix16_t a, fix16_t b)
 {
     // This uses a hardware 32/32 bit division multiple times, until we have
-    // computed all the bits in (a<<16)/b. Usually this takes 1-3 iterations.
+    // computed all the bits in (a<<17)/b. Usually this takes 1-3 iterations.
     
     if (b == 0)
         return fix16_min;
@@ -95,7 +96,7 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
         bit_pos -= 4;
     }
     
-    while (bit_pos >= 0)
+    while (remainder && bit_pos >= 0)
     {
         // Shift remainder as much as we can without overflowing
         int shift = clz(remainder);
@@ -106,7 +107,7 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
         uint32_t div = remainder / divider;
         remainder = remainder % divider;
         quotient += div << bit_pos;
-        
+
         #ifndef FIXMATH_NO_OVERFLOW
         if (div & ~(0xFFFFFFFF >> bit_pos))
             return fix16_overflow;
@@ -114,9 +115,6 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
         
         remainder <<= 1;
         bit_pos--;
-        
-        if (remainder == 0)
-            break;
     }
     
     #ifndef FIXMATH_NO_ROUNDING
