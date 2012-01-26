@@ -8,7 +8,7 @@ FILES = benchmark.c ../fix16_base.c
 # For comparing with the stock libfixmath
 #FILES = benchmark.c ../../libfixmath/fix16.c ../../libfixmath/fix16_sqrt.c
 
-CFLAGS = -DFIXMATH_NO_OVERFLOW
+#CFLAGS = -DFIXMATH_NO_OVERFLOW
 
 testcases.c: generate_testcases.py
 	python $<
@@ -27,8 +27,8 @@ run-benchmark-arm: benchmark-arm.elf
 
 benchmark-avr.elf: $(FILES) interface-avr.c testcases.c
 	avr-gcc -Wall -mmcu=atmega128 $(CFLAGS) \
-		-Wall -O2 -DFIXMATH_NO_64BIT \
-		-o $@ -I .. $(FILES) interface-arm.c
+		-Wall -O2 -DFIXMATH_OPTIMIZE_8BIT \
+		-o $@ -I .. $(FILES) interface-avr.c
 
 run-benchmark-avr: benchmark-avr.elf
 	# Note: this needs simulavrxx 1.0rc0 or newer

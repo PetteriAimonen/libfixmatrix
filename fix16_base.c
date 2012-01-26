@@ -1,6 +1,12 @@
 #include "fix16_base.h"
 
-#ifndef FIXMATH_NO_64BIT
+/* 64-bit implementation for fix16_mul. Fastest version for e.g. ARM Cortex M3.
+ * Performs a 32*32 -> 64bit multiplication. The middle 32 bits are the result,
+ * bottom 16 bits are used for rounding, and upper 16 bits are used for overflow
+ * detection.
+ */
+ 
+#if !defined(FIXMATH_NO_64BIT) && !defined(FIXMATH_OPTIMIZE_8BIT)
 fix16_t fix16_mul(fix16_t a, fix16_t b)
 {
     int64_t product = (int64_t)a * b;
@@ -39,7 +45,13 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
     return result;
     #endif
 }
+#endif
 
+/* 32-bit implementation of fix16_div. Fastest version for e.g. ARM Cortex M3.
+ * Performs 32-bit divisions repeatedly to reduce the remainder. For this to
+ * be efficient, the processor has to have 32-bit hardware division.
+ */
+#if !defined(FIXMATH_OPTIMIZE_8BIT)
 #ifdef __GNUC__
 // Count leading zeros, using processor-specific instruction if available.
 #define clz(x) __builtin_clz(x)
@@ -127,9 +139,74 @@ fix16_t fix16_div(fix16_t a, fix16_t b)
     
     return result;
 }
+#endif
 
-#else /* 32-bit implementations for compilers without int64_t and for 8-bit platforms. */
+/* 32-bit implementation of fix16_mul. Potentially fast on 16-bit processors,
+ * and this is a relatively good compromise for compilers that do not support
+ * uint64_t. Uses 16*16->32bit multiplications.
+ */
+#if defined(FIXMATH_NO_64BIT) && !defined(FIXMATH_OPTIMIZE_8BIT)
+fix16_t fix16_mul(fix16_t a, fix16_t b)
+{
+    // Each argument is divided to 16-bit parts.
+    //          AB
+    //      *   CD
+    // -----------
+    //          BD  16 * 16 -> 32 bit products
+    //         CB
+    //         AD
+    //        AC
+    //       |----| 64 bit product
+    int32_t A = (a >> 16), C = (b >> 16);
+    uint32_t B = (a & 0xFFFF), D = (b & 0xFFFF);
+    
+    int32_t AC = A*C;
+    int32_t AD_CB = A*D + C*B;
+    uint32_t BD = B*D;
+    
+    int32_t product_hi = AC + (AD_CB >> 16);
+    
+    // Handle carry from lower 32 bits to upper part of result.
+    uint32_t ad_cb_temp = AD_CB << 16;
+    uint32_t product_lo = BD + ad_cb_temp;
+    if (product_lo < BD)
+        product_hi++;
+    
+#ifndef FIXMATH_NO_OVERFLOW
+    // The upper 17 bits should all be the same (the sign).
+    if (product_hi >> 31 != product_hi >> 15)
+        return fix16_overflow;
+#endif
+    
+#ifdef FIXMATH_NO_ROUNDING
+    return (product_hi << 16) | (product_lo >> 16);
+#else
+    // Subtracting 0x8000 (= 0.5) and then using signed right shift
+    // achieves proper rounding to result-1, except in the corner
+    // case of negative numbers and lowest word = 0x8000.
+    // To handle that, we also have to subtract 1 for negative numbers.
+    uint32_t product_lo_tmp = product_lo;
+    product_lo -= 0x8000;
+    product_lo -= (uint32_t)product_hi >> 31;
+    if (product_lo > product_lo_tmp)
+        product_hi--;
+    
+    // Discard the lowest 16 bits. Note that this is not exactly the same
+    // as dividing by 0x10000. For example if product = -1, result will
+    // also be -1 and not 0. This is compensated by adding +1 to the result
+    // and compensating this in turn in the rounding above.
+    fix16_t result = (product_hi << 16) | (product_lo >> 16);
+    result += 1;
+    return result;
+#endif
+}
+#endif
 
+/* 8-bit implementation of fix16_mul. Fastest on e.g. Atmel AVR.
+ * Uses 8*8->16bit multiplications, and also skips any bytes that
+ * are zero.
+ */
+#if defined(FIXMATH_OPTIMIZE_8BIT)
 fix16_t fix16_mul(fix16_t a, fix16_t b)
 {
     uint32_t _a = (a >= 0) ? a : (-a);
@@ -207,7 +284,13 @@ fix16_t fix16_mul(fix16_t a, fix16_t b)
     
     return result;
 }
+#endif
 
+/* Alternative 32-bit implementation of fix16_div. Fastest on e.g. Atmel AVR.
+ * This does the division manually, and is therefore good for processors that
+ * do not have hardware division.
+ */
+#if defined(FIXMATH_OPTIMIZE_8BIT)
 fix16_t fix16_div(fix16_t a, fix16_t b)
 {
     // This uses the basic binary restoring division algorithm.
