@@ -436,4 +436,79 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
     }
 }
 
+/**************************
+ * Cholesky decomposition *
+ **************************/
+
+void mf16_cholesky(mf16 *dest, const mf16 *matrix)
+{
+    // This is the Cholesky–Banachiewicz algorithm.
+    // Refer to http://en.wikipedia.org/wiki/Cholesky_decomposition#The_Cholesky.E2.80.93Banachiewicz_and_Cholesky.E2.80.93Crout_algorithms
+    
+    int row, column, k;
+    dest->errors = matrix->errors;
+    
+    if (matrix->rows != matrix->columns)
+        dest->errors |= FIXMATRIX_DIMERR;
+    
+    dest->rows = dest->columns = matrix->rows;
+    
+    for (row = 0; row < dest->rows; row++)
+    {
+        for (column = 0; column < dest->columns; column++)
+        {
+            if (row == column)
+            {
+                // Value on the diagonal
+                // Ljj = sqrt(Ajj - sum(Ljk^2, k = 1..(j-1))
+                fix16_t value = matrix->data[row][column];
+                for (k = 0; k < column; k++)
+                {
+                    fix16_t Ljk = dest->data[row][k];
+                    Ljk = fix16_mul(Ljk, Ljk);
+                    value = fix16_sub(value, Ljk);
+                    
+                    if (value == fix16_overflow || Ljk == fix16_overflow)
+                        dest->errors |= FIXMATRIX_OVERFLOW;
+                }
+                
+                if (value < 0)
+                {
+                    if (value < -65)
+                        dest->errors |= FIXMATRIX_NEGATIVE;
+                    value = 0;
+                }
+                
+                dest->data[row][column] = fix16_sqrt(value);
+            }
+            else if (row < column)
+            {
+                // Value above diagonal
+                dest->data[row][column] = 0;
+            }
+            else
+            {
+                // Value below diagonal
+                // Lij = 1/Ljj (Aij - sum(Lik Ljk, k = 1..(j-1)))
+                fix16_t value = matrix->data[row][column];
+                for (k = 0; k < column; k++)
+                {
+                    fix16_t Lik = dest->data[row][k];
+                    fix16_t Ljk = dest->data[column][k];
+                    fix16_t product = fix16_mul(Lik, Ljk);
+                    value = fix16_sub(value, product);
+                    
+                    if (value == fix16_overflow || product == fix16_overflow)
+                        dest->errors |= FIXMATRIX_OVERFLOW;
+                }
+                fix16_t Ljj = dest->data[column][column];
+                value = fix16_div(value, Ljj);
+                dest->data[row][column] = value;
+                
+                if (value == fix16_overflow)
+                    dest->errors |= FIXMATRIX_OVERFLOW;
+            }
+        }
+    }
+}
 

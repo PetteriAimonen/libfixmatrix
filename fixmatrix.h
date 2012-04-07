@@ -57,6 +57,7 @@ typedef struct {
 #define FIXMATRIX_DIMERR   0x02
 #define FIXMATRIX_USEERR   0x04
 #define FIXMATRIX_SINGULAR 0x08
+#define FIXMATRIX_NEGATIVE 0x10
 
 // Initialization functions. These expect rows and column counts to be set be the caller,
 // everything else is initialized by the functions.
@@ -96,6 +97,8 @@ void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar);
 
 // QR-decomposition of a matrix
 //
+// Finds Q and R so that QR = A and Q is orthogonal and R is upper triangular.
+//
 // This function does not support rank-deficient matrices.
 // If rank(A) < cols(A), FIXMATRIX_SINGULAR is set.
 //
@@ -123,5 +126,21 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
 // good idea to invert matrices, you can do it by
 // passing identity matrix as 'matrix'.
 void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix);
+
+// Cholesky decomposition of a symmetric positive-definite matrix (matrix square root)
+//
+// Finds L so that L L' = A and L is lower triangular.
+//
+// Any negative square roots in computation are floored to 
+// zero. If they are smaller than -0.001, FIXMATRIX_NEGATIVE
+// error flag is set. Small negative values are often caused
+// by rounding errors, while large negative values indicate
+// non-positive definite matrix.
+//
+// Matrix is not checked for symmetricity. Only values in
+// the lower left triangle are used.
+//
+// Dest and matrix can alias.
+void mf16_cholesky(mf16 *dest, const mf16 *matrix);
 
 #endif

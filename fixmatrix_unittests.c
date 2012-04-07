@@ -531,6 +531,32 @@ int main()
         mf16_mul(&result, &a, &inv_a);
         TEST(max_delta(&result, &identity) < 100);
     }
+    
+    {
+        mf16 a = {3, 3, 0,
+            {{fix16_from_int(66), fix16_from_int(78), fix16_from_int(90)},
+             {fix16_from_int(78), fix16_from_int(93), fix16_from_int(108)},
+             {fix16_from_int(90), fix16_from_int(108), fix16_from_int(126)}}};
+        mf16 l, l2, llt;
+        
+        COMMENT("Test 3x3 Cholesky factorization");
+    
+        mf16_cholesky(&l, &a);
+        mf16_mul_bt(&llt, &l, &l);
+        
+        printf("L =\n");
+        print_matrix(&l);
+        
+        printf("L L' =\n");
+        print_matrix(&llt);
+        
+        TEST(max_delta(&a, &llt) < 10);
+        
+        COMMENT("Test Cholesky factorization with aliasing");
+        l2 = a;
+        mf16_cholesky(&l2, &l2);
+        TEST(max_delta(&l, &l2) == 0);
+    }
         
     if (status != 0)
         fprintf(stdout, "\n\nSome tests FAILED!\n");
