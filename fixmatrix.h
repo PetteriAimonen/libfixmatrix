@@ -116,7 +116,7 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
 // Solving a system of linear equations Ax = b, or equivalently,
 // left division A\b, using QR-decomposition.
 // matrix is the b and x is stored to dest.
-// The arguments cannot alias.
+// Dest can alias with matrix or q, but not with r.
 // matrix may have multiple columns, which are then solved
 // independently.
 // If you really really want and think that it is a

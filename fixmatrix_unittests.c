@@ -54,7 +54,7 @@ int main()
             {{fix16_from_int(1), fix16_from_int(2), fix16_from_int(3)},
              {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)},
              {fix16_from_int(7), fix16_from_int(8), fix16_from_int(9)}}};
-        mf16 r;
+        mf16 r, r2;
         
         COMMENT("Test 3x3 matrix multiplication");
         mf16_mul(&r, &a, &a);
@@ -69,6 +69,11 @@ int main()
         TEST(r.data[2][0] == fix16_from_int(102));
         TEST(r.data[2][1] == fix16_from_int(126));
         TEST(r.data[2][2] == fix16_from_int(150));
+        
+        COMMENT("Test 3x3 matrix multiplication with aliasing");
+        r2 = a;
+        mf16_mul(&r2, &r2, &r2);
+        TEST(max_delta(&r, &r2) == 0);
     }
     
     {
@@ -109,15 +114,23 @@ int main()
              {fix16_from_int(54)},
              {fix16_from_int(55)}}};
         
-        mf16 atb;
+        mf16 atb, abt;
         
-        COMMENT("Test transposed multiplication of vectors");
+        COMMENT("Test mf16_mul_at");
         mf16_mul_at(&atb, &a, &b);
         
         TEST(atb.rows == 1);
         TEST(atb.columns == 1);
         TEST(atb.errors == 0);
         TEST(atb.data[0][0] == fix16_from_int(27305));
+        
+        COMMENT("Test mf16_mul_bt");
+        mf16_mul_bt(&abt, &a, &b);
+        
+        TEST(abt.rows == 5);
+        TEST(abt.columns == 5);
+        TEST(abt.errors == 0);
+        TEST(abt.data[0][0] == fix16_from_int(101 * 51));
     }
     
     {
@@ -489,6 +502,8 @@ int main()
         print_matrix(&r);
         
         mf16_solve(&inv_a, &q, &r, &identity);
+        printf("inv(a) =\n");
+        print_matrix(&inv_a);
         
         mf16_mul(&result, &a, &inv_a);
         printf("a*inv(a) =\n");
@@ -498,6 +513,22 @@ int main()
         mf16_mul(&result, &inv_a, &a);
         printf("inv(a)*a =\n");
         print_matrix(&result);
+        TEST(max_delta(&result, &identity) < 100);
+        
+        COMMENT("Test 4x4 matrix inversion with aliasing dest = matrix");
+        inv_a = identity;
+        mf16_solve(&inv_a, &q, &r, &inv_a);
+        printf("inv(a) =\n");
+        print_matrix(&inv_a);
+        mf16_mul(&result, &a, &inv_a);
+        TEST(max_delta(&result, &identity) < 100);
+        
+        COMMENT("Test 4x4 matrix inversion with aliasing dest = q");
+        inv_a = q;
+        mf16_solve(&inv_a, &inv_a, &r, &identity);
+        printf("inv(a) =\n");
+        print_matrix(&inv_a);
+        mf16_mul(&result, &a, &inv_a);
         TEST(max_delta(&result, &identity) < 100);
     }
         
