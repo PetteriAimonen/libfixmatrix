@@ -2,7 +2,7 @@
 CC = gcc
 
 # Basic CFLAGS for debugging
-CFLAGS = -g -O0 -Wall -Wextra -Werror
+CFLAGS = -g -O0 -Wall -Wextra -Werror -I ../libfixmath -DFIXMATH_NO_CACHE
 
 all: run_unittests
 
@@ -15,7 +15,7 @@ run_unittests: fix16_unittests_noround fix16_unittests_round fixmatrix_unittests
 	./fix16_unittests_noround > /dev/null
 	./fixmatrix_unittests > /dev/null
 
-fixmatrix_unittests: fixmatrix_unittests.c fixmatrix.c fixmatrix.h fix16_base.c fix16_base.h
+fixmatrix_unittests: fixmatrix_unittests.c fixmatrix.c fixmatrix.h ../libfixmath/fix16.c ../libfixmath/fix16_sqrt.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 # The fixmatrix unittests are run only in the rounding, overflow detecting

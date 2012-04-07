@@ -1,5 +1,35 @@
 #include "fixmatrix.h"
-#include "fix16_base.h"
+
+/****************************
+ * Initialization functions *
+ ****************************/
+
+void mf16_fill(mf16 *dest, fix16_t value)
+{
+    int row, column;
+    dest->errors = 0;
+    
+    for (row = 0; row < dest->rows; row++)
+    {
+        for (column = 0; column < dest->columns; column++)
+        {
+            dest->data[row][column] = value;
+        }
+    }
+}
+
+void mf16_fill_diagonal(mf16 *dest, fix16_t value)
+{
+    int row;
+    
+    mf16_fill(dest, 0);
+    
+    for (row = 0; row < dest->rows; row++)
+    {
+        dest->data[row][row] = value;
+    }
+}
+
 
 /*********************************
  * Operations between 2 matrices *
@@ -31,13 +61,17 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t
 void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
 {
     int row, column;
+    
+    // If dest and input matrices alias, we have to use a temp destination.
+    mf16 tmp;
+    mf16 *realdest = dest;
+    if (dest == a || dest == b)
+        dest = &tmp;
+    
     dest->errors = a->errors | b->errors;
     
     if (a->columns != b->rows)
         dest->errors |= FIXMATRIX_DIMERR;
-    
-    if (dest == a || dest == b)
-        dest->errors |= FIXMATRIX_USEERR;
     
     dest->rows = a->rows;
     dest->columns = b->columns;
@@ -52,33 +86,22 @@ void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
                 a->columns, &dest->errors);
         }
     }
+    
+    if (dest != realdest)
+        *realdest = *dest;
 }
 
 // Multiply transpose of at with b
-void mf16_mul_t(mf16 *dest, const mf16 *at, const mf16 *b)
+void mf16_mul_at(mf16 *dest, const mf16 *at, const mf16 *b)
 {
-    int row, column;
-    dest->errors = at->errors | b->errors;
-    
-    if (at->rows != b->rows)
-        dest->errors |= FIXMATRIX_DIMERR;
-    
-    if (dest == at || dest == b)
-        dest->errors |= FIXMATRIX_USEERR;
-    
-    dest->rows = at->columns;
-    dest->columns = b->columns;
-    
-    for (row = 0; row < dest->rows; row++)
-    {
-        for (column = 0; column < dest->columns; column++)
-        {
-            dest->data[row][column] = dotproduct(
-                &at->data[0][row], FIXMATRIX_MAX_SIZE,
-                &b->data[0][column], FIXMATRIX_MAX_SIZE,
-                at->rows, &dest->errors);
-        }
-    }
+    mf16_transpose(dest, at);
+    mf16_mul(dest, dest, b);
+}
+
+void mf16_mul_bt(mf16 *dest, const mf16 *a, const mf16 *bt)
+{
+    mf16_transpose(dest, bt);
+    mf16_mul(dest, a, dest);
 }
 
 static void mf16_addsub(mf16 *dest, const mf16 *a, const mf16 *b, uint8_t add)
@@ -311,7 +334,7 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix)
     
     // Ax=b <=> QRx=b <=> Q'QRx=Q'b <=> Rx=Q'b
     // Q'b is calculated directly and x is then solved row-by-row.
-    mf16_mul_t(dest, q, matrix);
+    mf16_mul_at(dest, q, matrix);
     
     if (r->columns != r->rows || r->columns != q->columns)
     {

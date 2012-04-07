@@ -25,7 +25,8 @@
 #define __fixmatrix_h_
 
 #include <stdint.h>
-#include "fix16_base.h"
+#include <stdbool.h>
+#include <fix16.h>
 
 // Maximum size of matrices.
 #ifndef FIXMATRIX_MAX_SIZE
@@ -57,6 +58,15 @@ typedef struct {
 #define FIXMATRIX_USEERR   0x04
 #define FIXMATRIX_SINGULAR 0x08
 
+// Initialization functions. These expect rows and column counts to be set be the caller,
+// everything else is initialized by the functions.
+
+// Fill all the entries with the same value, and clear error status.
+void mf16_fill(mf16 *dest, fix16_t value);
+
+// Fill the diagonal entries with the given value and everything else with zeroes, and clear error status.
+void mf16_fill_diagonal(mf16 *dest, fix16_t value);
+
 // Calculates the dotproduct of two vectors of size n.
 // If overflow happens, sets flag in errors
 fix16_t dotproduct(const fix16_t *a, uint8_t a_stride,
@@ -64,11 +74,13 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride,
                    uint8_t n, uint8_t *errors);
 
 // Operations between two matrices
-// Note: in multiplication, dest can not point to the
-// same matrix as a or b. If it does, FIXMATRIX_USEERR
-// is set.
 void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b);
-void mf16_mul_t(mf16 *dest, const mf16 *at, const mf16 *b);
+
+// Multiply transpose of at with b
+void mf16_mul_at(mf16 *dest, const mf16 *at, const mf16 *b);
+
+// Multiply a with transpose of bt
+void mf16_mul_bt(mf16 *dest, const mf16 *a, const mf16 *bt);
 
 // In addition and subtraction, a = dest and b = dest are allowed.
 void mf16_add(mf16 *dest, const mf16 *a, const mf16 *b);
@@ -102,7 +114,7 @@ void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar);
 void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogonalize);
 
 // Solving a system of linear equations Ax = b, or equivalently,
-// right division A\b, using QR-decomposition.
+// left division A\b, using QR-decomposition.
 // matrix is the b and x is stored to dest.
 // The arguments cannot alias.
 // matrix may have multiple columns, which are then solved

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include "unittests.h"
 #include "fixmatrix.h"
-#include "fix16_base.h"
 
 void print_matrix(const mf16 *matrix)
 {
@@ -113,7 +112,7 @@ int main()
         mf16 atb;
         
         COMMENT("Test transposed multiplication of vectors");
-        mf16_mul_t(&atb, &a, &b);
+        mf16_mul_at(&atb, &a, &b);
         
         TEST(atb.rows == 1);
         TEST(atb.columns == 1);
@@ -233,7 +232,7 @@ int main()
         printf("r =\n");
         print_matrix(&r);
         
-        mf16_mul_t(&qtq, &q, &q);
+        mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
         print_matrix(&qtq);
         
@@ -255,7 +254,7 @@ int main()
         printf("r =\n");
         print_matrix(&r);
         
-        mf16_mul_t(&qtq, &q, &q);
+        mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
         print_matrix(&qtq);
         
@@ -285,7 +284,7 @@ int main()
         printf("r =\n");
         print_matrix(&r);
         
-        mf16_mul_t(&qtq, &q, &q);
+        mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
         print_matrix(&qtq);
         
@@ -303,7 +302,7 @@ int main()
         COMMENT("Test 4x3 QR-decomposition with aliasing r = matrix");
         r = a;
         mf16_qr_decomposition(&q, &r, &r, 1);
-        mf16_mul_t(&qtq, &q, &q);
+        mf16_mul_at(&qtq, &q, &q);
         mf16_mul(&qr, &q, &r);
         TEST(max_delta(&qtq, &identity) < 5);
         TEST(max_delta(&qr, &a) < 10);
@@ -329,7 +328,7 @@ int main()
         printf("r =\n");
         print_matrix(&r);
         
-        mf16_mul_t(&qtq, &q, &q);
+        mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
         print_matrix(&qtq);
         
@@ -355,7 +354,7 @@ int main()
         COMMENT("Test intermediate result overflow detection in QR decomp.");
         
         mf16_qr_decomposition(&q, &r, &a, 0);
-        mf16_mul_t(&qtq, &q, &q);
+        mf16_mul_at(&qtq, &q, &q);
         
         printf("q'q =\n");
         print_matrix(&qtq);
@@ -377,7 +376,7 @@ int main()
         COMMENT("Test large value handling in QR decomp.");
         
         mf16_qr_decomposition(&q, &r, &a, 0);
-        mf16_mul_t(&qtq, &q, &q);
+        mf16_mul_at(&qtq, &q, &q);
         
         printf("q =\n");
         print_matrix(&q);
