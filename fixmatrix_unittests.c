@@ -207,6 +207,26 @@ int main()
     }
     
     {
+        mf16 a = {3, 3, 0,
+            {{fix16_from_int(1), fix16_from_int(2), fix16_from_int(3)},
+             {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)},
+             {fix16_from_int(7), fix16_from_int(8), fix16_from_int(9)}}};
+        mf16 b = {3, 3, 0,
+            {{fix16_from_int(10), fix16_from_int(20), fix16_from_int(30)},
+             {fix16_from_int(40), fix16_from_int(50), fix16_from_int(60)},
+             {fix16_from_int(70), fix16_from_int(80), fix16_from_int(90)}}};
+        mf16 r;
+        
+        COMMENT("Test multiplication and division by a scalar");
+        
+        mf16_mul_s(&r, &a, fix16_from_int(10));
+        TEST(max_delta(&r, &b) == 0);
+        
+        mf16_div_s(&r, &r, fix16_from_int(10));
+        TEST(max_delta(&r, &a) == 0);
+    }
+    
+    {
         mf16 a = {5, 1, 0,
             {{fix16_from_int(1)},
              {fix16_from_int(2)},

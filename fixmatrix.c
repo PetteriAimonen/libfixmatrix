@@ -240,7 +240,7 @@ void mf16_transpose(mf16 *dest, const mf16 *matrix)
  * Operations of a matrix and a scalar *
  ***************************************/
 
-void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar)
+static void mf16_divmul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar, uint8_t mul)
 {
     int row, column;
     
@@ -253,14 +253,28 @@ void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar)
         for (column = 0; column < dest->columns; column++)
         {
             fix16_t value = matrix->data[row][column];
-            fix16_t product = fix16_mul(value, scalar);
             
-            if (product == fix16_overflow)
+            if (mul)
+                value = fix16_mul(value, scalar);
+            else
+                value = fix16_div(value, scalar);
+            
+            if (value == fix16_overflow)
                 dest->errors |= FIXMATRIX_OVERFLOW;
             
-            dest->data[row][column] = product;
+            dest->data[row][column] = value;
         }
     }
+}
+
+void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar)
+{
+    mf16_divmul_s(dest, matrix, scalar, 1);
+}
+
+void mf16_div_s(mf16 *dest, const mf16 *matrix, fix16_t scalar)
+{
+    mf16_divmul_s(dest, matrix, scalar, 0);
 }
 
 

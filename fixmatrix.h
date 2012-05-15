@@ -94,6 +94,7 @@ void mf16_transpose(mf16 *dest, const mf16 *matrix);
 // Operations of a matrix and a scalar
 // matrix and dest can alias.
 void mf16_mul_s(mf16 *dest, const mf16 *matrix, fix16_t scalar);
+void mf16_div_s(mf16 *dest, const mf16 *matrix, fix16_t scalar);
 
 // QR-decomposition of a matrix
 //
