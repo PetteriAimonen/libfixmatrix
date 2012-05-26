@@ -35,6 +35,8 @@ void mf16_fill_diagonal(mf16 *dest, fix16_t value)
  * Operations between 2 matrices *
  *********************************/
 
+#ifdef FIXMATH_NO_64BIT
+
 // Calculates the dotproduct of two vectors of size n.
 // If overflow happens, sets flag in errors
 fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t b_stride, uint8_t n, uint8_t *errors)
@@ -44,11 +46,14 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t
     while (n--)
     {
         // Compute result
-        fix16_t product = fix16_mul(*a, *b);
-        sum = fix16_add(sum, product);
-        
-        if (sum == fix16_overflow || product == fix16_overflow)
-            *errors |= FIXMATRIX_OVERFLOW;
+        if (*a != 0 && *b != 0)
+        {
+            fix16_t product = fix16_mul(*a, *b);
+            sum = fix16_add(sum, product);
+            
+            if (sum == fix16_overflow || product == fix16_overflow)
+                *errors |= FIXMATRIX_OVERFLOW;
+        }
         
         // Go to next item
         a += a_stride;
@@ -58,15 +63,75 @@ fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t
     return sum;
 }
 
+#else
+
+// Because dotproduct() is the hotspot of matrix multiplication,
+// it has a specialized 64-bit routine in addition to the normal
+// fix16_mul()-based one. This is especially efficient on ARM processors
+// which have SMLAL instruction.
+fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t b_stride, uint8_t n, uint8_t *errors)
+{
+    int64_t sum = 0;
+    unsigned _n = n;
+    
+    while (_n--)
+    {
+        if (*a != 0 && *b != 0)
+        {
+            sum += (int64_t)(*a) * (*b);
+        }
+        
+        // Go to next item
+        a += a_stride;
+        b += b_stride;
+    }
+    
+    // The upper 17 bits should all be the same (the sign).
+    uint32_t upper = sum >> 47;
+    if (sum < 0)
+    {
+        upper = ~upper;
+        
+        #ifndef FIXMATH_NO_ROUNDING
+        // This adjustment is required in order to round -1/2 correctly
+        sum--;
+        #endif
+    }
+    
+    #ifndef FIXMATH_NO_OVERFLOW
+    if (upper)
+        *errors |= FIXMATRIX_OVERFLOW;
+    #endif
+    
+    fix16_t result = sum >> 16;
+
+    #ifndef FIXMATH_NO_ROUNDING
+    result += (sum & 0x8000) >> 15;
+    #endif
+    
+    return result;
+}
+#endif
+
 void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
 {
     int row, column;
     
-    // If dest and input matrices alias, we have to use a temp destination.
+    // If dest and input matrices alias, we have to use a temp matrix.
     mf16 tmp;
-    mf16 *realdest = dest;
-    if (dest == a || dest == b)
-        dest = &tmp;
+    if (dest == a)
+    {
+        tmp = *a;
+        a = &tmp;
+        
+        if (dest == b)
+            b = &tmp;
+    }
+    else if (dest == b)
+    {
+        tmp = *b;
+        b = &tmp;
+    }
     
     dest->errors = a->errors | b->errors;
     
@@ -86,9 +151,6 @@ void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
                 a->columns, &dest->errors);
         }
     }
-    
-    if (dest != realdest)
-        *realdest = *dest;
 }
 
 // Multiply transpose of at with b
@@ -96,11 +158,21 @@ void mf16_mul_at(mf16 *dest, const mf16 *at, const mf16 *b)
 {
     int row, column;
     
-    // If dest and input matrices alias, we have to use a temp destination.
+    // If dest and input matrices alias, we have to use a temp matrix.
     mf16 tmp;
-    mf16 *realdest = dest;
-    if (dest == at || dest == b)
-        dest = &tmp;
+    if (dest == at)
+    {
+        tmp = *at;
+        at = &tmp;
+        
+        if (dest == b)
+            b = &tmp;
+    }
+    else if (dest == b)
+    {
+        tmp = *b;
+        b = &tmp;
+    }
     
     dest->errors = at->errors | b->errors;
     
@@ -120,20 +192,27 @@ void mf16_mul_at(mf16 *dest, const mf16 *at, const mf16 *b)
                 at->rows, &dest->errors);
         }
     }
-    
-    if (dest != realdest)
-        *realdest = *dest;
 }
 
 void mf16_mul_bt(mf16 *dest, const mf16 *a, const mf16 *bt)
 {
     int row, column;
     
-    // If dest and input matrices alias, we have to use a temp destination.
+    // If dest and input matrices alias, we have to use a temp matrix.
     mf16 tmp;
-    mf16 *realdest = dest;
-    if (dest == a || dest == bt)
-        dest = &tmp;
+    if (dest == a)
+    {
+        tmp = *a;
+        a = &tmp;
+        
+        if (dest == bt)
+            bt = &tmp;
+    }
+    else if (dest == bt)
+    {
+        tmp = *bt;
+        bt = &tmp;
+    }
     
     dest->errors = a->errors | bt->errors;
     
@@ -153,9 +232,6 @@ void mf16_mul_bt(mf16 *dest, const mf16 *a, const mf16 *bt)
                 a->columns, &dest->errors);
         }
     }
-    
-    if (dest != realdest)
-        *realdest = *dest;
 }
 
 static void mf16_addsub(mf16 *dest, const mf16 *a, const mf16 *b, uint8_t add)
