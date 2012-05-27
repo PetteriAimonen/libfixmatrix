@@ -1,8 +1,8 @@
-Fixed point matrix library
-==========================
-
 .. image:: http://kapsi.fi/~jpa/stuff/pix/fixmatrixlogo.png
    :align: right
+
+Fixed point matrix library
+==========================
 
 Libfixmatrix is a matrix computation library for microcontrollers.
 It is based on the libfixmath_ library, which uses 16.16 bit fixed point values.
@@ -19,10 +19,10 @@ To avoid complexity and dynamic memory allocations, all matrices are allocated a
 Libfixmatrix is suited well for tasks involving small matrices (often less than 10x10):
 `Kalman filters`_, `transformation matrices`_ and solving `systems of linear equations`_.
 
-:: _libfixmath: http://code.google.com/p/libfixmath/
-:: _QR decomposition: http://en.wikipedia.org/wiki/QR_decomposition
-:: _Cholesky decomposition: http://en.wikipedia.org/wiki/Cholesky_decomposition
-:: _function reference: FUNCTIONS.rst
-:: _Kalman filters: http://en.wikipedia.org/wiki/Kalman_filter
-:: _transformation matrices: http://en.wikipedia.org/wiki/Transformation_matrix
-:: _systems of linear equations: http://en.wikipedia.org/wiki/System_of_linear_equations
+.. _libfixmath: http://code.google.com/p/libfixmath/
+.. _QR decomposition: http://en.wikipedia.org/wiki/QR_decomposition
+.. _Cholesky decomposition: http://en.wikipedia.org/wiki/Cholesky_decomposition
+.. _function reference: FUNCTIONS.rst
+.. _Kalman filters: http://en.wikipedia.org/wiki/Kalman_filter
+.. _transformation matrices: http://en.wikipedia.org/wiki/Transformation_matrix
+.. _systems of linear equations: http://en.wikipedia.org/wiki/System_of_linear_equations
