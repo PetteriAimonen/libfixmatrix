@@ -22,7 +22,7 @@ Libfixmatrix is suited well for tasks involving small matrices (often less than 
 .. _libfixmath: http://code.google.com/p/libfixmath/
 .. _QR decomposition: http://en.wikipedia.org/wiki/QR_decomposition
 .. _Cholesky decomposition: http://en.wikipedia.org/wiki/Cholesky_decomposition
-.. _function reference: FUNCTIONS.rst
+.. _function reference: https://github.com/PetteriAimonen/libfixmatrix/blob/master/FUNCTIONS.rst
 .. _Kalman filters: http://en.wikipedia.org/wiki/Kalman_filter
 .. _transformation matrices: http://en.wikipedia.org/wiki/Transformation_matrix
 .. _systems of linear equations: http://en.wikipedia.org/wiki/System_of_linear_equations
