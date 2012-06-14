@@ -342,6 +342,34 @@ int main()
     }
     
     {
+        mf16 a = {8, 5, 0,
+            {{ 10,     0,     0,     0,   982},
+             {  0,     6, -1383,     0,     0},
+             {  0,    15,   580,     0,     0},
+             {  0,     0,     0,   284,    -3},
+             {-56,     0,     0,     0,   284},
+             { 64,     0,     0,     0,     0},
+             {  0,    64,     0,     0,     0},
+             {  0,     0,    64,     0,     0}}
+        };
+        mf16 q, r, qr;
+        
+        COMMENT("Test 8x5 QR-decomposition with small values");
+        mf16_qr_decomposition(&q, &r, &a, 1);
+        
+        printf("q =\n");
+        print_matrix(&q);
+        printf("r =\n");
+        print_matrix(&r);
+        
+        TEST(q.errors == 0);
+        TEST(r.errors == 0);
+        
+        mf16_mul(&qr, &q, &r);
+        TEST(max_delta(&qr, &a) < 10);
+    }
+    
+    {
         mf16 a = {8, 1, 0,
             {{fix16_from_int(1)},
              {fix16_from_int(2)},

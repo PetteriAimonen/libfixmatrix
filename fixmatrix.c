@@ -405,13 +405,7 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
     r->columns = matrix->columns;
     r->rows = matrix->columns;
     r->errors = 0;
-    for (j = 0; j < r->rows; j++)
-    {
-        for (i = 0; i < r->columns; i++)
-        {
-            r->data[j][i] = 0;
-        }
-    }
+    mf16_fill(r, 0);
     
     // Now do the actual Gram-Schmidt for the rows.
     for (j = 0; j < q->columns; j++)
@@ -437,20 +431,28 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
         norm = fix16_sqrt(dot);
         r->data[j][j] = norm;
         
-        // Dot product may overflow if the values are larger than 256.
+        // Dot product may overflow if the values are larger than 256,
+        // or underflow if the values are less than 1/256. Square root
+        // will return the norm into the valid range.
         // If this happens, prescale them before calculating dot product.
+        fix16_t norm_scaler = 0;
         if (dp_errors)
+            norm_scaler = 256;
+        
+        if (norm < 256 && norm > -256)
+            norm_scaler = fix16_from_int(256);
+        
+        if (norm_scaler != 0)
         {
-            fix16_t norm_scaler = fix16_from_int(256);
             for (i = 0; i < n; i++) {
-                q->data[i][j] = fix16_div(q->data[i][j], norm_scaler);
+                q->data[i][j] = fix16_mul(q->data[i][j], norm_scaler);
             }
             
             dot = dotproduct(&q->data[0][j], stride, &q->data[0][j], stride,
                          n, &q->errors);
             
             norm = fix16_sqrt(dot);
-            r->data[j][j] = fix16_mul(norm, norm_scaler);
+            r->data[j][j] = fix16_div(norm, norm_scaler);
         }
         
         if (norm < 5 && norm > -5)
