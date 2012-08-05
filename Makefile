@@ -9,11 +9,14 @@ all: run_unittests
 clean:
 	rm -f fixmatrix_unittests
 
-run_unittests: fixmatrix_unittests
-	./fixmatrix_unittests > /dev/null
+run_unittests: fixmatrix_unittests fixmatrix_unittests_32bit
+	./fixmatrix_unittests > /dev/null && ./fixmatrix_unittests_32bit > /dev/null
 
-fixmatrix_unittests: fixmatrix_unittests.c fixmatrix.c fixmatrix.h libfixmath/fix16.c libfixmath/fix16_sqrt.c
+fixmatrix_unittests: fixmatrix_unittests.c fixmatrix.c fixmatrix.h fixarray.c libfixmath/fix16.c libfixmath/fix16_sqrt.c
 	$(CC) $(CFLAGS) -o $@ $^
+
+fixmatrix_unittests_32bit: fixmatrix_unittests.c fixmatrix.c fixmatrix.h fixarray.c libfixmath/fix16.c libfixmath/fix16_sqrt.c
+	$(CC) $(CFLAGS) -DFIXMATH_NO_64BIT -o $@ $^
 
 libfixmath/%:
 	@echo "Downloading a copy of libfixmath..."

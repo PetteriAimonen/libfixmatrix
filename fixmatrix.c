@@ -1,4 +1,5 @@
 #include "fixmatrix.h"
+#include "fixarray.h"
 
 /****************************
  * Initialization functions *
@@ -35,84 +36,6 @@ void mf16_fill_diagonal(mf16 *dest, fix16_t value)
  * Operations between 2 matrices *
  *********************************/
 
-#ifdef FIXMATH_NO_64BIT
-
-// Calculates the dotproduct of two vectors of size n.
-// If overflow happens, sets flag in errors
-fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t b_stride, uint8_t n, uint8_t *errors)
-{
-    fix16_t sum = 0;
-    
-    while (n--)
-    {
-        // Compute result
-        if (*a != 0 && *b != 0)
-        {
-            fix16_t product = fix16_mul(*a, *b);
-            sum = fix16_add(sum, product);
-            
-            if (sum == fix16_overflow || product == fix16_overflow)
-                *errors |= FIXMATRIX_OVERFLOW;
-        }
-        
-        // Go to next item
-        a += a_stride;
-        b += b_stride;
-    }
-    
-    return sum;
-}
-
-#else
-
-// Because dotproduct() is the hotspot of matrix multiplication,
-// it has a specialized 64-bit routine in addition to the normal
-// fix16_mul()-based one. This is especially efficient on ARM processors
-// which have SMLAL instruction.
-fix16_t dotproduct(const fix16_t *a, uint8_t a_stride, const fix16_t *b, uint8_t b_stride, uint8_t n, uint8_t *errors)
-{
-    int64_t sum = 0;
-    unsigned _n = n;
-    
-    while (_n--)
-    {
-        if (*a != 0 && *b != 0)
-        {
-            sum += (int64_t)(*a) * (*b);
-        }
-        
-        // Go to next item
-        a += a_stride;
-        b += b_stride;
-    }
-    
-    // The upper 17 bits should all be the same (the sign).
-    uint32_t upper = sum >> 47;
-    if (sum < 0)
-    {
-        upper = ~upper;
-        
-        #ifndef FIXMATH_NO_ROUNDING
-        // This adjustment is required in order to round -1/2 correctly
-        sum--;
-        #endif
-    }
-    
-    #ifndef FIXMATH_NO_OVERFLOW
-    if (upper)
-        *errors |= FIXMATRIX_OVERFLOW;
-    #endif
-    
-    fix16_t result = sum >> 16;
-
-    #ifndef FIXMATH_NO_ROUNDING
-    result += (sum & 0x8000) >> 15;
-    #endif
-    
-    return result;
-}
-#endif
-
 void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
 {
     int row, column;
@@ -145,10 +68,13 @@ void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
     {
         for (column = 0; column < dest->columns; column++)
         {
-            dest->data[row][column] = dotproduct(
+            dest->data[row][column] = fa16_dot(
                 &a->data[row][0], 1,
                 &b->data[0][column], FIXMATRIX_MAX_SIZE,
-                a->columns, &dest->errors);
+                a->columns);
+            
+            if (dest->data[row][column] == fix16_overflow)
+                dest->errors |= FIXMATRIX_OVERFLOW;
         }
     }
 }
@@ -186,10 +112,13 @@ void mf16_mul_at(mf16 *dest, const mf16 *at, const mf16 *b)
     {
         for (column = 0; column < dest->columns; column++)
         {
-            dest->data[row][column] = dotproduct(
+            dest->data[row][column] = fa16_dot(
                 &at->data[0][row], FIXMATRIX_MAX_SIZE,
                 &b->data[0][column], FIXMATRIX_MAX_SIZE,
-                at->rows, &dest->errors);
+                at->rows);
+            
+            if (dest->data[row][column] == fix16_overflow)
+                dest->errors |= FIXMATRIX_OVERFLOW;
         }
     }
 }
@@ -226,10 +155,13 @@ void mf16_mul_bt(mf16 *dest, const mf16 *a, const mf16 *bt)
     {
         for (column = 0; column < dest->columns; column++)
         {
-            dest->data[row][column] = dotproduct(
+            dest->data[row][column] = fa16_dot(
                 &a->data[row][0], 1,
                 &bt->data[column][0], 1,
-                a->columns, &dest->errors);
+                a->columns);
+            
+            if (dest->data[row][column] == fix16_overflow)
+                dest->errors |= FIXMATRIX_OVERFLOW;
         }
     }
 }
@@ -417,43 +349,22 @@ void mf16_qr_decomposition(mf16 *q, mf16 *r, const mf16 *matrix, int reorthogona
                 fix16_t *v = &q->data[0][j];
                 fix16_t *u = &q->data[0][i];
                 
-                dot = dotproduct(v, stride, u, stride, n, &q->errors);
+                dot = fa16_dot(v, stride, u, stride, n);
                 subtract_projection(v, u, dot, n, &q->errors);
+                
+                if (dot == fix16_overflow)
+                    q->errors |= FIXMATRIX_OVERFLOW;
                 
                 r->data[i][j] += dot;
             }
         }
         
         // Normalize the row in q
-        uint8_t dp_errors = 0;
-        dot = dotproduct(&q->data[0][j], stride, &q->data[0][j], stride,
-                         n, &dp_errors);
-        norm = fix16_sqrt(dot);
+        norm = fa16_norm(&q->data[0][j], stride, n);
         r->data[j][j] = norm;
         
-        // Dot product may overflow if the values are larger than 256,
-        // or underflow if the values are less than 1/256. Square root
-        // will return the norm into the valid range.
-        // If this happens, prescale them before calculating dot product.
-        fix16_t norm_scaler = 0;
-        if (dp_errors)
-            norm_scaler = 256;
-        
-        if (norm < 256 && norm > -256)
-            norm_scaler = fix16_from_int(256);
-        
-        if (norm_scaler != 0)
-        {
-            for (i = 0; i < n; i++) {
-                q->data[i][j] = fix16_mul(q->data[i][j], norm_scaler);
-            }
-            
-            dot = dotproduct(&q->data[0][j], stride, &q->data[0][j], stride,
-                         n, &q->errors);
-            
-            norm = fix16_sqrt(dot);
-            r->data[j][j] = fix16_div(norm, norm_scaler);
-        }
+        if (norm == fix16_overflow)
+            q->errors |= FIXMATRIX_OVERFLOW;
         
         if (norm < 5 && norm > -5)
         {

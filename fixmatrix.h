@@ -68,12 +68,6 @@ void mf16_fill(mf16 *dest, fix16_t value);
 // Fill the diagonal entries with the given value and everything else with zeroes, and clear error status.
 void mf16_fill_diagonal(mf16 *dest, fix16_t value);
 
-// Calculates the dotproduct of two vectors of size n.
-// If overflow happens, sets flag in errors
-fix16_t dotproduct(const fix16_t *a, uint8_t a_stride,
-                   const fix16_t *b, uint8_t b_stride,
-                   uint8_t n, uint8_t *errors);
-
 // Operations between two matrices
 void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b);
 

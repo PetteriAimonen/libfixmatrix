@@ -29,7 +29,7 @@ fix16_t max_delta(const mf16 *a, const mf16 *b)
     if (a->rows != b->rows || a->columns != b->columns ||
         a->errors || b->errors)
     {
-        return fix16_max;
+        return fix16_maximum;
     }
     
     for (i = 0; i < a->rows; i++)
