@@ -1,4 +1,5 @@
 #include "fixarray.h"
+#include <string.h> /* For memcpy() */
 
 #ifdef FIXMATH_NO_64BIT
 
@@ -194,3 +195,21 @@ fix16_t fa16_norm(const fix16_t *a, uint_fast8_t a_stride, uint_fast8_t n)
 }
 
 #endif
+
+void fa16_unalias(void *dest, void **a, void **b, void *tmp, unsigned size)
+{
+    if (dest == *a)
+    {
+        memcpy(tmp, *a, size);
+        *a = tmp;
+        
+        if (dest == *b)
+            *b = tmp;
+    }
+    else if (dest == *b)
+    {
+        memcpy(tmp, *b, size);
+        *b = tmp;
+    }
+}
+

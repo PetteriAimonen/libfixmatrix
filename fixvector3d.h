@@ -12,18 +12,18 @@ typedef struct {
 } v3d;
 
 // Basic arithmetic
-v3d v3d_add(v3d a, v3d b);
-v3d v3d_sub(v3d a, v3d b);
-v3d v3d_mul(v3d a, fix16_t b);
-v3d v3d_div(v3d a, fix16_t b);
+void v3d_add(v3d *dest, const v3d *a, const v3d *b);
+void v3d_sub(v3d *dest, const v3d *a, const v3d *b);
+void v3d_mul_s(v3d *dest, const v3d *a, fix16_t b);
+void v3d_div_s(v3d *dest, const v3d *a, fix16_t b);
 
 // Norm
-fix16_t v3d_norm(v3d a);
+fix16_t v3d_norm(const v3d *a);
 
 // Dot product
-fix16_t v3d_dot(v3d a, v3d b);
+fix16_t v3d_dot(const v3d *a, const v3d *b);
 
 // Cross product
-v3d v3d_cross(v3d a, v3d b);
+void v3d_cross(v3d *dest, const v3d *a, const v3d *b);
 
 #endif

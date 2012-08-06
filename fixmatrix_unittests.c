@@ -1,25 +1,7 @@
 #include <stdio.h>
 #include "unittests.h"
 #include "fixmatrix.h"
-
-void print_matrix(const mf16 *matrix)
-{
-    if (matrix->errors)
-    {
-        printf("ERRORS: %d\n", matrix->errors);
-    }
-    
-    int row, column;
-    for (row = 0; row < matrix->rows; row++)
-    {
-        for (column = 0; column < matrix->columns; column++)
-        {
-            fix16_t value = matrix->data[row][column];
-            printf("%9.4f ", fix16_to_float(value));
-        }
-        printf("\n");
-    }
-}
+#include "fixstring.h"
 
 fix16_t max_delta(const mf16 *a, const mf16 *b)
 {
@@ -261,17 +243,17 @@ int main()
         COMMENT("Test 3x3 QR-decomposition");
         mf16_qr_decomposition(&q, &r, &a, 1);
         printf("q =\n");
-        print_matrix(&q);
+        print_mf16(stdout, &q);
         printf("r =\n");
-        print_matrix(&r);
+        print_mf16(stdout, &r);
         
         mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
-        print_matrix(&qtq);
+        print_mf16(stdout, &qtq);
         
         mf16_mul(&qr, &q, &r);
         printf("qr =\n");
-        print_matrix(&qr);
+        print_mf16(stdout, &qr);
         
         fix16_t one = fix16_from_int(1);
         const mf16 identity = {3, 3, 0,
@@ -283,17 +265,17 @@ int main()
         COMMENT("Test 3x3 QR-decomposition without reorthogonalization");
         mf16_qr_decomposition(&q, &r, &a, 0);
         printf("q =\n");
-        print_matrix(&q);
+        print_mf16(stdout, &q);
         printf("r =\n");
-        print_matrix(&r);
+        print_mf16(stdout, &r);
         
         mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
-        print_matrix(&qtq);
+        print_mf16(stdout, &qtq);
         
         mf16_mul(&qr, &q, &r);
         printf("qr =\n");
-        print_matrix(&qr);
+        print_mf16(stdout, &qr);
         
         TEST(max_delta(&qtq, &identity) < 10);
         TEST(max_delta(&qr, &a) < 10);
@@ -313,17 +295,17 @@ int main()
         COMMENT("Test 4x3 QR-decomposition with aliasing q = matrix");
         mf16_qr_decomposition(&q, &r, &q, 1);
         printf("q =\n");
-        print_matrix(&q);
+        print_mf16(stdout, &q);
         printf("r =\n");
-        print_matrix(&r);
+        print_mf16(stdout, &r);
         
         mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
-        print_matrix(&qtq);
+        print_mf16(stdout, &qtq);
         
         mf16_mul(&qr, &q, &r);
         printf("qr =\n");
-        print_matrix(&qr);
+        print_mf16(stdout, &qr);
         
         fix16_t one = fix16_from_int(1);
         const mf16 identity = {3, 3, 0,
@@ -358,9 +340,9 @@ int main()
         mf16_qr_decomposition(&q, &r, &a, 1);
         
         printf("q =\n");
-        print_matrix(&q);
+        print_mf16(stdout, &q);
         printf("r =\n");
-        print_matrix(&r);
+        print_mf16(stdout, &r);
         
         TEST(q.errors == 0);
         TEST(r.errors == 0);
@@ -385,17 +367,17 @@ int main()
         COMMENT("Test 8x1 QR-decomposition");
         mf16_qr_decomposition(&q, &r, &a, 1);
         printf("q =\n");
-        print_matrix(&q);
+        print_mf16(stdout, &q);
         printf("r =\n");
-        print_matrix(&r);
+        print_mf16(stdout, &r);
         
         mf16_mul_at(&qtq, &q, &q);
         printf("q'q =\n");
-        print_matrix(&qtq);
+        print_mf16(stdout, &qtq);
         
         mf16_mul(&qr, &q, &r);
         printf("qr =\n");
-        print_matrix(&qr);
+        print_mf16(stdout, &qr);
         
         const mf16 identity = {1, 1, 0,
             {{fix16_from_int(1)}}
@@ -418,7 +400,7 @@ int main()
         mf16_mul_at(&qtq, &q, &q);
         
         printf("q'q =\n");
-        print_matrix(&qtq);
+        print_mf16(stdout, &qtq);
         
         fix16_t one = fix16_from_int(1);
         const mf16 identity = {3, 3, 0,
@@ -440,10 +422,10 @@ int main()
         mf16_mul_at(&qtq, &q, &q);
         
         printf("q =\n");
-        print_matrix(&q);
+        print_mf16(stdout, &q);
         
         printf("q'q =\n");
-        print_matrix(&qtq);
+        print_mf16(stdout, &qtq);
         
         fix16_t one = fix16_from_int(1);
         const mf16 identity = {3, 3, 0,
@@ -465,11 +447,11 @@ int main()
         mf16_qr_decomposition(&q, &r, &a, 1);
         mf16_solve(&x, &q, &r, &b);
         printf("x = \n");
-        print_matrix(&x);
+        print_mf16(stdout, &x);
         
         mf16_mul(&ax, &a, &x);
         printf("Ax = \n");
-        print_matrix(&ax);
+        print_mf16(stdout, &ax);
         
         TEST(max_delta(&ax, &b) < 10);
     }
@@ -493,7 +475,7 @@ int main()
         mf16_qr_decomposition(&q, &r, &a, 1);
         mf16_solve(&x, &q, &r, &b);
         printf("x = \n");
-        print_matrix(&x);
+        print_mf16(stdout, &x);
         
         // Reference result computed using Octave A\b
         mf16 ref = {3, 1, 0,
@@ -518,11 +500,11 @@ int main()
         mf16_qr_decomposition(&q, &r, &a, 1);
         mf16_solve(&x, &q, &r, &b);
         printf("x = \n");
-        print_matrix(&x);
+        print_mf16(stdout, &x);
         
         mf16_mul(&ax, &a, &x);
         printf("Ax = \n");
-        print_matrix(&ax);
+        print_mf16(stdout, &ax);
         
         // Note: large delta due to large values in matrix.
         // This is one of the shortcomings of fixed point format.
@@ -545,29 +527,29 @@ int main()
         mf16_qr_decomposition(&q, &r, &a, 1);
         
         printf("q =\n");
-        print_matrix(&q);
+        print_mf16(stdout, &q);
         printf("r =\n");
-        print_matrix(&r);
+        print_mf16(stdout, &r);
         
         mf16_solve(&inv_a, &q, &r, &identity);
         printf("inv(a) =\n");
-        print_matrix(&inv_a);
+        print_mf16(stdout, &inv_a);
         
         mf16_mul(&result, &a, &inv_a);
         printf("a*inv(a) =\n");
-        print_matrix(&result);
+        print_mf16(stdout, &result);
         TEST(max_delta(&result, &identity) < 100);
         
         mf16_mul(&result, &inv_a, &a);
         printf("inv(a)*a =\n");
-        print_matrix(&result);
+        print_mf16(stdout, &result);
         TEST(max_delta(&result, &identity) < 100);
         
         COMMENT("Test 4x4 matrix inversion with aliasing dest = matrix");
         inv_a = identity;
         mf16_solve(&inv_a, &q, &r, &inv_a);
         printf("inv(a) =\n");
-        print_matrix(&inv_a);
+        print_mf16(stdout, &inv_a);
         mf16_mul(&result, &a, &inv_a);
         TEST(max_delta(&result, &identity) < 100);
         
@@ -575,7 +557,7 @@ int main()
         inv_a = q;
         mf16_solve(&inv_a, &inv_a, &r, &identity);
         printf("inv(a) =\n");
-        print_matrix(&inv_a);
+        print_mf16(stdout, &inv_a);
         mf16_mul(&result, &a, &inv_a);
         TEST(max_delta(&result, &identity) < 100);
     }
@@ -593,10 +575,10 @@ int main()
         mf16_mul_bt(&llt, &l, &l);
         
         printf("L =\n");
-        print_matrix(&l);
+        print_mf16(stdout, &l);
         
         printf("L L' =\n");
-        print_matrix(&llt);
+        print_mf16(stdout, &llt);
         
         TEST(max_delta(&a, &llt) < 10);
         

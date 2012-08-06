@@ -42,19 +42,7 @@ void mf16_mul(mf16 *dest, const mf16 *a, const mf16 *b)
     
     // If dest and input matrices alias, we have to use a temp matrix.
     mf16 tmp;
-    if (dest == a)
-    {
-        tmp = *a;
-        a = &tmp;
-        
-        if (dest == b)
-            b = &tmp;
-    }
-    else if (dest == b)
-    {
-        tmp = *b;
-        b = &tmp;
-    }
+    fa16_unalias(dest, (void**)&a, (void**)&b, &tmp, sizeof(tmp));
     
     dest->errors = a->errors | b->errors;
     
@@ -86,19 +74,7 @@ void mf16_mul_at(mf16 *dest, const mf16 *at, const mf16 *b)
     
     // If dest and input matrices alias, we have to use a temp matrix.
     mf16 tmp;
-    if (dest == at)
-    {
-        tmp = *at;
-        at = &tmp;
-        
-        if (dest == b)
-            b = &tmp;
-    }
-    else if (dest == b)
-    {
-        tmp = *b;
-        b = &tmp;
-    }
+    fa16_unalias(dest, (void**)&at, (void**)&b, &tmp, sizeof(tmp));
     
     dest->errors = at->errors | b->errors;
     
@@ -129,19 +105,7 @@ void mf16_mul_bt(mf16 *dest, const mf16 *a, const mf16 *bt)
     
     // If dest and input matrices alias, we have to use a temp matrix.
     mf16 tmp;
-    if (dest == a)
-    {
-        tmp = *a;
-        a = &tmp;
-        
-        if (dest == bt)
-            bt = &tmp;
-    }
-    else if (dest == bt)
-    {
-        tmp = *bt;
-        bt = &tmp;
-    }
+    fa16_unalias(dest, (void**)&a, (void**)&bt, &tmp, sizeof(tmp));
     
     dest->errors = a->errors | bt->errors;
     
