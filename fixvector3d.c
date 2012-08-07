@@ -24,7 +24,7 @@ void v3d_mul_s(v3d *dest, const v3d *a, fix16_t b)
 
 void v3d_div_s(v3d *dest, const v3d *a, fix16_t b)
 {
-        dest->x = fix16_div(a->x, b-);
+        dest->x = fix16_div(a->x, b);
         dest->y = fix16_div(a->y, b);
         dest->z = fix16_div(a->z, b);
 }
