@@ -49,7 +49,7 @@ fix16_t qf16_norm(const qf16 *q)
 // Normalize quaternion
 void qf16_normalize(qf16 *dest, const qf16 *q)
 {
-    qf16_div(dest, q, qf16_norm(q));
+    qf16_div_s(dest, q, qf16_norm(q));
 }
 
 // Unit quaternion to rotation matrix
@@ -67,6 +67,6 @@ void qf16_to_matrix(mf16 *dest, const qf16 *q)
     dest->data[2][0] = 2 * (fix16_mul(q->b, q->d) - fix16_mul(q->a, q->c));
     dest->data[0][2] = 2 * (fix16_mul(q->b, q->d) + fix16_mul(q->a, q->c));
     
-    dest->data[2][1] = 2 * (fix16_mul(q->b, q->c) + fix16_mul(q->a, q->d));
-    dest->data[1][2] = 2 * (fix16_mul(q->b, q->c) - fix16_mul(q->a, q->d));
+    dest->data[2][1] = 2 * (fix16_mul(q->c, q->d) + fix16_mul(q->a, q->b));
+    dest->data[1][2] = 2 * (fix16_mul(q->c, q->d) - fix16_mul(q->a, q->b));
 }
