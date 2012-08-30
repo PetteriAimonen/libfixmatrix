@@ -58,6 +58,7 @@ int main()
     }
     
     {
+        COMMENT("Test qf16 -> rotation matrix");
         qf16 rot = {fix16_from_float(0.7071), fix16_from_float(0.7071), 0, 0};
         mf16 matrix;
         
@@ -76,6 +77,18 @@ int main()
         TEST(matrix.data[0][2] == fix16_from_int(0));
         TEST(matrix.data[1][2] == fix16_from_int(-1));
         TEST(matrix.data[2][2] == fix16_from_int(0));
+    }
+    
+    {
+        COMMENT("Test qf16_rotate");
+        qf16 rot = {F16(0.5), F16(0.5), F16(0.5), F16(0.5)};
+        v3d input = {F16(1), F16(2), F16(3)};
+        v3d output;
+        
+        qf16_rotate(&output, &rot, &input);
+        TEST(output.x == F16(3));
+        TEST(output.y == F16(1));
+        TEST(output.z == F16(2));
     }
     
     if (status != 0)

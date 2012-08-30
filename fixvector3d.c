@@ -35,6 +35,11 @@ fix16_t v3d_norm(const v3d *a)
     return fa16_norm(&a->x, &a->y - &a->x, 3);
 }
 
+void v3d_normalize(v3d *dest, const v3d *a)
+{
+    v3d_div_s(dest, a, v3d_norm(a));
+}
+
 // Dot product
 fix16_t v3d_dot(const v3d *a, const v3d *b)
 {

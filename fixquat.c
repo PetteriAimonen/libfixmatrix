@@ -52,6 +52,17 @@ void qf16_normalize(qf16 *dest, const qf16 *q)
     qf16_div_s(dest, q, qf16_norm(q));
 }
 
+void qf16_from_axis_angle(qf16 *dest, const v3d *axis, fix16_t angle)
+{
+    angle /= 2;
+    fix16_t scale = fix16_sin(angle);
+    
+    dest->a = fix16_cos(angle);
+    dest->b = fix16_mul(axis->x, scale);
+    dest->c = fix16_mul(axis->y, scale);
+    dest->d = fix16_mul(axis->z, scale);
+}
+
 // Unit quaternion to rotation matrix
 void qf16_to_matrix(mf16 *dest, const qf16 *q)
 {
@@ -69,4 +80,17 @@ void qf16_to_matrix(mf16 *dest, const qf16 *q)
     
     dest->data[2][1] = 2 * (fix16_mul(q->c, q->d) + fix16_mul(q->a, q->b));
     dest->data[1][2] = 2 * (fix16_mul(q->c, q->d) - fix16_mul(q->a, q->b));
+}
+
+void qf16_rotate(v3d *dest, const qf16 *q, const v3d *v)
+{
+    qf16 vector, q_conj;
+    
+    qf16_from_v3d(&vector, v, 0);
+    qf16_conj(&q_conj, q);
+    
+    qf16_mul(&vector, q, &vector);
+    qf16_mul(&vector, &vector, &q_conj);
+    
+    qf16_to_v3d(dest, &vector);
 }

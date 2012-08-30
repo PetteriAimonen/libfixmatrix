@@ -5,6 +5,7 @@
 
 #include <fix16.h>
 #include "fixmatrix.h"
+#include "fixvector3d.h"
 
 typedef struct {
     fix16_t a; // Real part
@@ -31,7 +32,29 @@ fix16_t qf16_norm(const qf16 *q);
 // Normalize quaternion
 void qf16_normalize(qf16 *dest, const qf16 *q);
 
+// Unit quaternion from axis and angle
+// Axis should have unit length.
+void qf16_from_axis_angle(qf16 *dest, const v3d *axis, fix16_t angle);
+
 // Unit quaternion to rotation matrix
 void qf16_to_matrix(mf16 *dest, const qf16 *q);
+
+// Rotate vector using quaternion
+void qf16_rotate(v3d *dest, const qf16 *q, const v3d *v);
+
+static inline void qf16_from_v3d(qf16 *q, const v3d *v, fix16_t a)
+{
+    q->a = a;
+    q->b = v->x;
+    q->c = v->y;
+    q->d = v->z;
+}
+
+static inline void qf16_to_v3d(v3d *v, const qf16 *q)
+{
+    v->x = q->b;
+    v->y = q->c;
+    v->z = q->d;
+}
 
 #endif
