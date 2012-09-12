@@ -67,8 +67,8 @@ void print_v3d(FILE *stream, const v3d *vector)
     fprintf(stream, "(");
     print_fix16_t(stream, vector->x, 9, 4);
     fprintf(stream, ", ");
-    print_fix16_t(stream, vector->x, 9, 4);
+    print_fix16_t(stream, vector->y, 9, 4);
     fprintf(stream, ", ");
-    print_fix16_t(stream, vector->x, 9, 4);
+    print_fix16_t(stream, vector->z, 9, 4);
     fprintf(stream, ")");
 }
