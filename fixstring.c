@@ -5,8 +5,14 @@ void print_fix16_t(FILE *stream, fix16_t value, uint_fast8_t width, uint_fast8_t
 {
     char buf[13];
     fix16_to_str(value, buf, decimals);
-    width -= strlen(buf);
-    while (width-- > 0) fprintf(stream, " ");
+    
+    uint_fast8_t len = strlen(buf);
+    if (len < width)
+    {
+        width -= len;
+        while (width-- > 0)
+            fputc(' ', stream);
+    }
 
     fputs(buf, stream);
 }
