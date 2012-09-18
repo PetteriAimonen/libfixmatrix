@@ -54,7 +54,42 @@ int main()
         TEST(fix16_abs(c.b - fix16_from_float(0.365148f)) < 2);
         TEST(fix16_abs(c.c - fix16_from_float(0.547722f)) < 2);
         TEST(fix16_abs(c.d - fix16_from_float(0.730297f)) < 2);
+    }
+    
+    {
+        COMMENT("Test quaternion power");
+        qf16 a, b, a_sq, result;
+        v3d axis = {F16(0.8), F16(0.6), 0};
         
+        qf16_from_axis_angle(&a, &axis, F16(1.0));
+        qf16_from_axis_angle(&b, &axis, F16(1.6));
+        
+        qf16_mul(&a_sq, &a, &a);
+        qf16_pow(&result, &a, F16(2.0));
+        printf("(");
+        print_qf16(stdout, &a);
+        printf(") ^ 2 = ");
+        print_qf16(stdout, &result);
+        printf("   should be   ");
+        print_qf16(stdout, &a_sq);
+        printf("\n");
+        TEST(max_delta(&result, &a_sq) < F16(0.01));
+        
+        qf16_pow(&result, &a, F16(1.6));
+        printf("(");
+        print_qf16(stdout, &a);
+        printf(") ^ 1.6 = ");
+        print_qf16(stdout, &result);
+        printf("\n");
+        TEST(max_delta(&result, &b) < F16(0.01));
+        
+        qf16_pow(&result, &b, F16(0.625));
+        printf("(");
+        print_qf16(stdout, &b);
+        printf(") ^ 0.625 = ");
+        print_qf16(stdout, &result);
+        printf("\n");
+        TEST(max_delta(&result, &a) < F16(0.01));
     }
     
     {

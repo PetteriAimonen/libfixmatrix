@@ -52,6 +52,25 @@ void qf16_normalize(qf16 *dest, const qf16 *q)
     qf16_div_s(dest, q, qf16_norm(q));
 }
 
+// Quaternion power
+void qf16_pow(qf16 *dest, const qf16 *q, fix16_t power)
+{
+    fix16_t old_half_angle = fix16_acos(q->a);
+    fix16_t new_half_angle = fix16_mul(old_half_angle, power);
+    fix16_t multiplier = 0;
+    
+    if (old_half_angle > 10) // Guard against almost-zero divider
+    {
+        multiplier = fix16_div(fix16_sin(new_half_angle),
+                               fix16_sin(old_half_angle));
+    }
+    
+    dest->a = fix16_cos(new_half_angle);
+    dest->b = fix16_mul(q->b, multiplier);
+    dest->c = fix16_mul(q->c, multiplier);
+    dest->d = fix16_mul(q->d, multiplier);
+}
+
 void qf16_from_axis_angle(qf16 *dest, const v3d *axis, fix16_t angle)
 {
     angle /= 2;

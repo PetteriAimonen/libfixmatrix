@@ -4,7 +4,7 @@ CC = gcc
 # Basic CFLAGS for debugging
 CFLAGS = -g -O0 -Wall -Wextra -Werror -I libfixmath -DFIXMATH_NO_CACHE
 
-COMMON = fixarray.c fixstring.c libfixmath/fix16.c libfixmath/fix16_sqrt.c libfixmath/fix16_str.c
+COMMON = fixarray.c fixstring.c libfixmath/fix16.c libfixmath/fix16_sqrt.c libfixmath/fix16_str.c libfixmath/fix16_trig.c
 
 all: run_unittests
 

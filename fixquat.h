@@ -32,8 +32,11 @@ fix16_t qf16_norm(const qf16 *q);
 // Normalize quaternion
 void qf16_normalize(qf16 *dest, const qf16 *q);
 
-// Unit quaternion from axis and angle
-// Axis should have unit length.
+// Quaternion power (exponentation)
+void qf16_pow(qf16 *dest, const qf16 *q, fix16_t power);
+
+// Unit quaternion from axis and angle.
+// Axis should have unit length and angle in radians.
 void qf16_from_axis_angle(qf16 *dest, const v3d *axis, fix16_t angle);
 
 // Unit quaternion to rotation matrix
