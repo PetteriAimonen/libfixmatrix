@@ -13,6 +13,12 @@ fix16_t max_delta(const qf16 *a, const qf16 *b)
     return max;
 }
 
+fix16_t max_delta_abs(const qf16 *a, const qf16 *b)
+{
+    qf16 a_inv = {-a->a, -a->b, -a->c, -a->d};
+    return fix16_min(max_delta(a, b), max_delta(&a_inv, b));
+}
+
 int main()
 {
     int status = 0;
@@ -90,6 +96,39 @@ int main()
         print_qf16(stdout, &result);
         printf("\n");
         TEST(max_delta(&result, &a) < F16(0.01));
+    }
+    
+    {
+        COMMENT("Test qf16 averaging");
+        qf16 a = {F16(1), 0, 0, 0}, b = {-F16(1), 0, 0, 0};
+        qf16 result, expected;
+        
+        qf16_avg(&result, &a, &b, F16(0.2));
+        printf("avg = ");
+        print_qf16(stdout, &result);
+        printf("\n");
+        TEST(max_delta_abs(&result, &a) < 2);
+        
+        a.c = F16(-3);
+        b.c = F16(3);
+        qf16_normalize(&a, &a);
+        qf16_normalize(&b, &b);
+        qf16_avg(&result, &a, &b, F16(0.9));
+        printf("avg = ");
+        print_qf16(stdout, &result);
+        printf("\n");
+        TEST(max_delta_abs(&result, &a) < 2);
+        
+        v3d axis = {0, 0, F16(1)};
+        qf16_from_axis_angle(&a, &axis, F16(1.0));
+        qf16_from_axis_angle(&b, &axis, F16(2.0));
+        qf16_from_axis_angle(&expected, &axis, F16(1.5));
+        qf16_avg(&result, &a, &b, F16(0.5));
+        print_qf16(stdout, &result);
+        printf(" vs. ");
+        print_qf16(stdout, &expected);
+        printf("\n");
+        TEST(max_delta_abs(&result, &expected) < 2);
     }
     
     {

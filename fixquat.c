@@ -22,6 +22,14 @@ void qf16_mul(qf16 *dest, const qf16 *q, const qf16 *r)
     dest->d = fix16_mul(q->a, r->d) + fix16_mul(q->b, r->c) - fix16_mul(q->c, r->b) + fix16_mul(q->d, r->a);
 }
 
+void qf16_add(qf16 *dest, const qf16 *q, const qf16 *r)
+{
+    dest->a = q->a + r->a;
+    dest->b = q->b + r->b;
+    dest->c = q->c + r->c;
+    dest->d = q->d + r->d;
+}
+
 // Multiply quaternion by scalar
 void qf16_mul_s(qf16 *dest, const qf16 *q, fix16_t s)
 {
@@ -38,6 +46,11 @@ void qf16_div_s(qf16 *dest, const qf16 *q, fix16_t s)
     dest->b = fix16_div(q->b, s);
     dest->c = fix16_div(q->c, s);
     dest->d = fix16_div(q->d, s);
+}
+
+fix16_t qf16_dot(const qf16 *q, const qf16 *r)
+{
+    return fa16_dot(&q->a, &q->b - &q->a, &r->a, &r->b - &r->a, 4);    
 }
 
 // Quaternion norm
@@ -69,6 +82,31 @@ void qf16_pow(qf16 *dest, const qf16 *q, fix16_t power)
     dest->b = fix16_mul(q->b, multiplier);
     dest->c = fix16_mul(q->c, multiplier);
     dest->d = fix16_mul(q->d, multiplier);
+}
+
+// Weighted average
+// See http://www.acsu.buffalo.edu/~johnc/ave_sfm07.pdf
+void qf16_avg(qf16 *dest, const qf16 *q1, const qf16 *q2, fix16_t weight)
+{
+    // z = sqrt((w1 - w2)^2 + 4 w1 w2 (q1' q2)^2
+    // <=>
+    // z = sqrt((2 w1 - 1)^2 + 4 w1 (1 - w1) (q1' q2)^2)
+    fix16_t dot = qf16_dot(q1, q2);
+    fix16_t z = fix16_sq(2 * weight - F16(1))
+            + fix16_mul(4 * weight, fix16_mul((F16(1) - weight), fix16_sq(dot)));
+    z = fix16_sqrt(z);
+    
+    // q = 2 * w1 * (q1' q2) q1 + (w2 - w1 + z) q2
+    // <=>
+    // q = 2 * w1 * (q1' q2) q1 + (1 - 2 * w1 + z) q2
+    qf16 tmp1;
+    qf16_mul_s(&tmp1, q1, fix16_mul(2 * weight, dot));
+    
+    qf16 tmp2;
+    qf16_mul_s(&tmp2, q2, F16(1) - 2 * weight + z);
+    
+    qf16_add(dest, &tmp1, &tmp2);
+    qf16_normalize(dest, dest);
 }
 
 void qf16_from_axis_angle(qf16 *dest, const v3d *axis, fix16_t angle)
