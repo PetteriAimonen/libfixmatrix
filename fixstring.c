@@ -59,3 +59,12 @@ void print_v3d(FILE *stream, const v3d *vector)
     print_fix16_t(stream, vector->z, 9, 4);
     fprintf(stream, ")");
 }
+
+void print_v2d(FILE *stream, const v2d *vector)
+{
+    fprintf(stream, "(");
+    print_fix16_t(stream, vector->x, 9, 4);
+    fprintf(stream, ", ");
+    print_fix16_t(stream, vector->y, 9, 4);
+    fprintf(stream, ")");
+}
