@@ -275,3 +275,16 @@ Any negative square roots in computation are floored to zero. If they are less t
 
 Matrix is not checked for symmetricity. Only values in the lower left triangle are used.
 
+mf16_invert_lt
+-------------
+Inversion of a symmetric lower triangular matrix::
+
+    void mf16_invert_lt(mf16 *dest, const mf16 *matrix);
+
+:dest:      Destination matrix to store L.
+:matrix:    Lower triangular matrix to invert.
+
+This function finds inv(A) so that ``A inv(A) = I`` and I is the identitiy matrix.
+
+Matrix is not checked for symmetricity. Only values in the lower left triangle are used.
+
