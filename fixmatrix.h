@@ -138,4 +138,14 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix);
 // Dest and matrix can alias.
 void mf16_cholesky(mf16 *dest, const mf16 *matrix);
 
+// Matrix inversion of a lower triangular square matrix.
+//
+// Finds inv(A) so that I = A*inv(A) where I is the identity.
+//
+// Matrix is not checked for symmetricity. Only values in
+// the lower left triangle are used.
+//
+// Dest and matrix can alias.
+void mf16_invert_lt(mf16 *dest, const mf16 *matrix);
+
 #endif
