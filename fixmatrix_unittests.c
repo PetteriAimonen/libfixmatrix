@@ -587,6 +587,34 @@ int main()
         mf16_cholesky(&l2, &l2);
         TEST(max_delta(&l, &l2) == 0);
     }
+    
+    {
+        mf16 a = {3, 3, 0,
+            {{fix16_from_int(1), fix16_from_int(0), fix16_from_int(0)},
+             {fix16_from_int(2), fix16_from_int(3), fix16_from_int(0)},
+             {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)}}};
+        mf16 orig_a = a;
+             
+        fix16_t one = fix16_from_int(1);
+        mf16 identity = {3, 3, 0,
+            {{one,0,0}, {0,one,0}, {0,0,one}}};
+        
+        COMMENT("Test mf16_invert_lt");
+        
+        printf("A =\n");
+        print_mf16(stdout, &a);
+        
+        mf16_invert_lt(&a, &a);
+        
+        printf("inv A =\n");
+        print_mf16(stdout, &a);
+        
+        mf16_mul(&a, &a, &orig_a);
+        printf("inv A * A =\n");
+        print_mf16(stdout, &a);
+        
+        TEST(max_delta(&a, &identity) < 10);
+    }
         
     if (status != 0)
         fprintf(stdout, "\n\nSome tests FAILED!\n");
