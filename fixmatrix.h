@@ -138,9 +138,12 @@ void mf16_solve(mf16 *dest, const mf16 *q, const mf16 *r, const mf16 *matrix);
 // Dest and matrix can alias.
 void mf16_cholesky(mf16 *dest, const mf16 *matrix);
 
-// Matrix inversion of a lower triangular square matrix.
+// Matrix inversion of a matrix through its lower triangular decomposition.
 //
-// Finds inv(A) so that I = A*inv(A) where I is the identity.
+// Finds inv(A) through L, so that A inv(A) = I and I is the identitiy matrix 
+// and L a lower triangular matrix such that L L' = A.
+//
+// The required lower triangular matrix can be obtained through mf16_cholesky().
 //
 // Matrix is not checked for symmetricity. Only values in
 // the lower left triangle are used.
