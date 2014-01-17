@@ -590,10 +590,10 @@ int main()
     
     {
         mf16 a = {3, 3, 0,
-            {{fix16_from_int(1), fix16_from_int(0), fix16_from_int(0)},
-             {fix16_from_int(2), fix16_from_int(3), fix16_from_int(0)},
-             {fix16_from_int(4), fix16_from_int(5), fix16_from_int(6)}}};
-        mf16 orig_a = a;
+            {{fix16_from_int(2), fix16_from_int(-1), fix16_from_int(0)},
+             {fix16_from_int(-1), fix16_from_int(2), fix16_from_int(-1)},
+             {fix16_from_int(0), fix16_from_int(-1), fix16_from_int(2)}}};
+        mf16 l;
              
         fix16_t one = fix16_from_int(1);
         mf16 identity = {3, 3, 0,
@@ -604,12 +604,16 @@ int main()
         printf("A =\n");
         print_mf16(stdout, &a);
         
-        mf16_invert_lt(&a, &a);
+        mf16_cholesky(&l, &a);
+        printf("L =\n");
+        print_mf16(stdout, &l);
+        
+        mf16_invert_lt(&l, &l);
         
         printf("inv A =\n");
-        print_mf16(stdout, &a);
+        print_mf16(stdout, &l);
         
-        mf16_mul(&a, &a, &orig_a);
+        mf16_mul(&a, &l, &a);
         printf("inv A * A =\n");
         print_mf16(stdout, &a);
         
