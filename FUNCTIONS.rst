@@ -275,3 +275,17 @@ Any negative square roots in computation are floored to zero. If they are less t
 
 Matrix is not checked for symmetricity. Only values in the lower left triangle are used.
 
+mf16_invert_lt
+-------------
+Inversion of a symmetric positive-definite matrix that has been decomposed to a lower triangular matrix::
+
+    void mf16_invert_lt(mf16 *dest, const mf16 *matrix);
+
+:dest:      Destination matrix to store L.
+:matrix:    Lower triangular matrix to invert.
+
+This function finds inv(A) through L, so that ``A inv(A) = I`` and I is the identitiy matrix and L a lower triangular such that ``L L' = A``.
+It is meant to be used in combination with mf16_cholesky in order to efficiently invert symmetric positive-definite matrices such as the covariance matrix.
+
+Matrix is not checked for symmetricity. Only values in the lower left triangle are used.
+
